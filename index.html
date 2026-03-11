@@ -343,6 +343,12 @@
     <div id="chart2" style="height:380px;"></div>
   </div>
 
+  <!-- Chart 3 -->
+  <div class="section-title">📅 持仓甘特图：开仓 → 平仓时间轴 &nbsp;<span style="font-weight:400;color:var(--text-muted);font-size:12px;">🟢 盈利 &nbsp;🔴 亏损 &nbsp;· 可叠加 K 线图比对开平仓逻辑</span></div>
+  <div class="chart-wrapper" style="padding:12px 8px 8px;">
+    <div id="chart3"></div>
+  </div>
+
   <!-- Trade Table -->
   <div class="section-title table-section">📋 已平仓交易明细</div>
   <div class="table-scroll">
@@ -670,6 +676,70 @@ function renderChart2(trades) {
   }, { responsive: true, displayModeBar: false });
 }
 
+function renderChart3(trades) {
+  // 按开仓时间升序排列，同时开的单按平仓时间排
+  const sorted = [...trades].sort((a, b) =>
+    a.openTimeBJ - b.openTimeBJ || a.closeTimeBJ - b.closeTimeBJ
+  );
+
+  const trace = {
+    type: 'bar',
+    orientation: 'h',
+    // base = 开仓时间（ISO），x = 持仓时长（ms），Plotly date 轴自动加总
+    base: sorted.map(t => t.openTimeBJ.toISOString()),
+    x:    sorted.map(t => t.closeTimeBJ - t.openTimeBJ),
+    y:    sorted.map(t => `${t.type.toUpperCase()} #${t.ticket}`),
+    marker: {
+      color: sorted.map(t => t.netProfit > 0
+        ? 'rgba(38,166,154,0.82)'
+        : 'rgba(239,83,80,0.82)'
+      ),
+      line: {
+        color: sorted.map(t => t.netProfit > 0 ? '#1a9990' : '#c62828'),
+        width: 1,
+      },
+    },
+    text: sorted.map(t => {
+      const hold = t.holdingMin >= 60
+        ? (t.holdingMin / 60).toFixed(1) + 'h'
+        : t.holdingMin + 'min';
+      return (
+        `<b>${t.type.toUpperCase()} #${t.ticket}</b><br>` +
+        `品种: ${t.item} &nbsp; 手数: ${t.size}<br>` +
+        `开仓: ${fmtDatetime(t.openTimeBJ)} &nbsp; @${t.openPrice.toFixed(2)}<br>` +
+        `平仓: ${fmtDatetime(t.closeTimeBJ)} &nbsp; @${t.closePrice.toFixed(2)}<br>` +
+        `持仓时长: ${hold}<br>` +
+        `盈亏: <b>${fmtNum(t.netProfit)} USD</b>`
+      );
+    }),
+    hoverinfo: 'text',
+    showlegend: false,
+  };
+
+  // 每行 26px + 顶部/底部边距，最高 1600px
+  const h = Math.min(Math.max(320, sorted.length * 26 + 130), 1600);
+
+  Plotly.newPlot('chart3', [trace], {
+    ...PLOTLY_LAYOUT_BASE,
+    title: { text: '持仓甘特图（开仓时间 → 平仓时间）', font: { size: 14 } },
+    xaxis: {
+      ...PLOTLY_LAYOUT_BASE.xaxis,
+      type: 'date',
+      title: '时间（北京）',
+      tickformat: '%H:%M',
+      side: 'top',    // 时间轴放顶部，对标 K 线图阅读习惯
+    },
+    yaxis: {
+      ...PLOTLY_LAYOUT_BASE.yaxis,
+      automargin: true,
+      autorange: 'reversed',  // 最早开单在最顶部
+      tickfont: { size: 10 },
+    },
+    height: h,
+    margin: { l: 140, r: 20, t: 70, b: 20 },
+  }, { responsive: true, displayModeBar: true, scrollZoom: true });
+}
+
 function renderTable(trades) {
   const tbody = document.getElementById('trade-tbody');
   tbody.innerHTML = trades.map(t => {
@@ -707,6 +777,7 @@ function processFile(file) {
       renderStats(stats);
       renderChart1(trades);
       renderChart2(trades);
+      renderChart3(trades);
       renderTable(trades);
 
       showSection('results');
