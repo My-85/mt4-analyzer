@@ -3,868 +3,791 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MT4 交易账单分析器</title>
+<title>MT4 交易账单分析器 2.0</title>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3250;
-    --accent: #4f8ef7;
-    --green: #26a69a;
-    --red: #ef5350;
-    --text: #e8eaf0;
-    --text-muted: #8b90a8;
-    --gold: #f5c842;
-  }
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
+  --accent:#4f8ef7; --green:#26a69a; --red:#ef5350;
+  --text:#e8eaf0; --muted:#8b90a8; --gold:#f5c842;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:20px}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* header */
+header{text-align:center;margin-bottom:24px}
+header h1{font-size:26px;font-weight:700;color:var(--gold)}
+.vbadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle}
+header p{color:var(--muted);margin-top:6px;font-size:13px}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    min-height: 100vh;
-    padding: 24px;
-  }
+/* drop zone */
+#drop-zone{border:2px dashed var(--border);border-radius:16px;padding:44px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);max-width:680px;margin:0 auto 28px}
+#drop-zone.drag-over{border-color:var(--accent);background:#1a2240}
+#drop-zone .icon{font-size:42px;margin-bottom:12px}
+#drop-zone h2{font-size:17px;margin-bottom:6px}
+#drop-zone p{color:var(--muted);font-size:13px;margin-bottom:4px}
+.multi-hint{color:var(--accent) !important;font-size:12px !important;margin-bottom:18px !important}
+#file-input{display:none}
+.btn{display:inline-block;padding:9px 24px;background:var(--accent);color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;border:none;transition:opacity .15s}
+.btn:hover{opacity:.85}
 
-  header {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-  header h1 {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--gold);
-    letter-spacing: 1px;
-  }
-  header p {
-    color: var(--text-muted);
-    margin-top: 6px;
-    font-size: 14px;
-  }
+/* offset row */
+.offset-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin:16px 0 20px;font-size:13px;color:var(--muted)}
+.oiw{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)}
+.obtn{background:none;border:none;color:var(--text);font-size:18px;width:32px;height:32px;cursor:pointer;transition:background .15s}
+.obtn:hover{background:var(--border)}
+#tz-offset{width:50px;text-align:center;background:none;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-size:15px;font-weight:600;height:32px;outline:none;-moz-appearance:textfield}
+#tz-offset::-webkit-inner-spin-button,#tz-offset::-webkit-outer-spin-button{-webkit-appearance:none}
+.ohint{color:var(--accent);font-size:12px;width:100%;text-align:center}
 
-  /* ---- Upload Zone ---- */
-  #drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 16px;
-    padding: 56px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--surface);
-    max-width: 700px;
-    margin: 0 auto 40px;
-  }
-  #drop-zone.drag-over {
-    border-color: var(--accent);
-    background: #1a2240;
-  }
-  #drop-zone .icon { font-size: 48px; margin-bottom: 16px; }
-  #drop-zone h2 { font-size: 18px; margin-bottom: 8px; }
-  #drop-zone p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
-  #file-input { display: none; }
-  .btn {
-    display: inline-block;
-    padding: 10px 28px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    transition: opacity 0.15s;
-  }
-  .btn:hover { opacity: 0.85; }
+/* error / loading */
+#error-msg{display:none;background:#3a1520;border:1px solid var(--red);color:var(--red);border-radius:10px;padding:14px 20px;max-width:680px;margin:0 auto 20px;font-size:14px}
+#loading{display:none;text-align:center;padding:40px;color:var(--muted)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ---- Error ---- */
-  #error-msg {
-    display: none;
-    background: #3a1520;
-    border: 1px solid var(--red);
-    color: var(--red);
-    border-radius: 10px;
-    padding: 14px 20px;
-    max-width: 700px;
-    margin: 0 auto 24px;
-    font-size: 14px;
-  }
+/* filter bar */
+#filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fg{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)}
+.fg label{white-space:nowrap}
+.fsel,.fdate{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 9px;font-size:13px;outline:none;height:32px}
+.fsel:focus,.fdate:focus{border-color:var(--accent)}
+.fdate{width:128px}
+.fsep{color:var(--border)}
+.freset{margin-left:auto;padding:5px 14px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;font-size:12px;cursor:pointer;height:32px;transition:all .15s}
+.freset:hover{border-color:var(--red);color:var(--red)}
 
-  /* ---- Results ---- */
-  #results { display: none; }
+/* view toggle bar */
+#vtbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.ftags{display:flex;flex-wrap:wrap;gap:7px}
+.ftag{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--muted)}
+.fdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.twrap{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.tbtn{padding:7px 20px;cursor:pointer;border:none;background:none;color:var(--muted);font-size:13px;transition:all .15s}
+.tbtn.active{background:var(--accent);color:#fff;font-weight:600}
 
-  .account-banner {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 24px;
-    margin-bottom: 28px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: center;
-  }
-  .account-banner .account-item {
-    display: flex;
-    flex-direction: column;
-  }
-  .account-banner .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .account-banner .value { font-size: 15px; font-weight: 600; margin-top: 2px; }
+/* section title */
+.st{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 
-  /* ---- Stats Grid ---- */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px 16px;
-  }
-  .stat-card .stat-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-  }
-  .stat-card .stat-value {
-    font-size: 22px;
-    font-weight: 700;
-  }
-  .stat-card .stat-sub {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-  .positive { color: var(--green); }
-  .negative { color: var(--red); }
-  .neutral { color: var(--text); }
-  .highlight { color: var(--gold); }
+/* account banner */
+.abanner{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;margin-bottom:22px;display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+.ai{display:flex;flex-direction:column}
+.ai .alabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.ai .aval{font-size:14px;font-weight:600;margin-top:2px}
+.adiv{width:1px;background:var(--border);align-self:stretch}
 
-  /* ---- Section Title ---- */
-  .section-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
+/* stats grid */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;margin-bottom:26px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 13px}
+.sc .slabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.sc .sval{font-size:19px;font-weight:700}
+.sc .ssub{font-size:11px;color:var(--muted);margin-top:3px}
+.pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--text)} .hi{color:var(--gold)}
 
-  /* ---- Charts ---- */
-  .chart-wrapper {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 24px;
-  }
+/* compare table */
+.cwrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-bottom:22px}
+.ctable{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+.ctable th{padding:9px 15px;background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);text-align:center}
+.ctable th:first-child{text-align:left;color:var(--muted)}
+.ctable td{padding:8px 15px;text-align:center;border-bottom:1px solid #1e2235}
+.ctable td:first-child{text-align:left;color:var(--muted);font-size:12px}
+.ctable tr:last-child td{border-bottom:none}
+.ctable tr:hover td{background:#1e2540}
+.cdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
 
-  /* ---- Trade Table ---- */
-  .table-section { margin-top: 8px; }
-  .table-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  thead tr { background: var(--surface2); }
-  thead th {
-    padding: 10px 12px;
-    text-align: right;
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    white-space: nowrap;
-    border-bottom: 1px solid var(--border);
-  }
-  thead th:first-child { text-align: left; }
-  tbody tr { border-bottom: 1px solid #1e2235; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:nth-child(even) { background: #161929; }
-  tbody tr:hover { background: #1e2540; }
-  td {
-    padding: 8px 12px;
-    text-align: right;
-    white-space: nowrap;
-    color: var(--text);
-  }
-  td:first-child { text-align: left; color: var(--text-muted); font-size: 11px; }
-  .type-buy { color: var(--green); font-weight: 600; }
-  .type-sell { color: var(--red); font-weight: 600; }
+/* chart wrapper */
+.cw{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 8px 8px;margin-bottom:20px}
 
-  /* ---- Reset Btn ---- */
-  #reset-btn {
-    display: block;
-    margin: 32px auto 0;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 10px 28px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.15s;
-  }
-  #reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* trade table */
+.thr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.thr:hover .st{color:var(--accent)}
+.ticon{color:var(--muted);font-size:15px;transition:transform .2s}
+.ticon.open{transform:rotate(180deg)}
+#tcontent{display:none;margin-top:12px}
+#tcontent.open{display:block}
+.tscroll{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table.tt{width:100%;border-collapse:collapse;font-size:13px}
+table.tt thead tr{background:var(--surface2)}
+table.tt thead th{padding:8px 11px;text-align:right;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:color .15s}
+table.tt thead th:hover{color:var(--accent)}
+table.tt thead th:first-child{text-align:left}
+.sico{font-size:10px;margin-left:2px}
+table.tt tbody tr{border-bottom:1px solid #1e2235}
+table.tt tbody tr:last-child{border-bottom:none}
+table.tt tbody tr:nth-child(even){background:#161929}
+table.tt tbody tr:hover{background:#1e2540}
+table.tt td{padding:7px 11px;text-align:right;white-space:nowrap}
+table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
+.tybuy{color:var(--green);font-weight:600} .tysell{color:var(--red);font-weight:600}
 
-  /* ---- Offset Row ---- */
-  .offset-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin: 18px 0 22px;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-  .offset-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--surface2);
-  }
-  .offset-btn {
-    background: none;
-    border: none;
-    color: var(--text);
-    font-size: 18px;
-    width: 34px;
-    height: 34px;
-    cursor: pointer;
-    line-height: 1;
-    transition: background 0.15s;
-  }
-  .offset-btn:hover { background: var(--border); }
-  #tz-offset {
-    width: 52px;
-    text-align: center;
-    background: none;
-    border: none;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 600;
-    height: 34px;
-    outline: none;
-    -moz-appearance: textfield;
-  }
-  #tz-offset::-webkit-inner-spin-button,
-  #tz-offset::-webkit-outer-spin-button { -webkit-appearance: none; }
-  .offset-hint {
-    color: var(--accent);
-    font-size: 12px;
-    width: 100%;
-    text-align: center;
-  }
+/* pagination */
+.pag{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;font-size:13px;flex-wrap:wrap}
+.pbtn{padding:4px 11px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:13px;transition:all .15s}
+.pbtn:hover{border-color:var(--accent);color:var(--accent)}
+.pbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pbtn:disabled{opacity:.3;cursor:not-allowed}
+.pinfo{color:var(--muted)}
 
-  /* Loading */
-  #loading {
-    display: none;
-    text-align: center;
-    padding: 40px;
-    color: var(--text-muted);
-  }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* reset */
+#reset-btn{display:block;margin:26px auto 0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:9px 24px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s}
+#reset-btn:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>📊 MT4 交易账单分析器</h1>
-  <p>支持 TradeMax / MetaTrader 4 导出的 HTM 账单文件 · 可自定义时区偏移换算为北京时间</p>
+  <h1>📊 MT4 交易账单分析器 <span class="vbadge">2.0</span></h1>
+  <p>支持多文件合并分析 · 品种/策略筛选 · 合并与对比双视角 · 13 项专业绩效指标</p>
 </header>
 
-<!-- Upload Zone -->
 <div id="drop-zone">
   <div class="icon">📂</div>
   <h2>拖拽账单文件到这里</h2>
-  <p>支持 MT4 导出的 .htm / .html 格式账单文件</p>
-
+  <p>支持 MT4 / TradeMax 导出的 .htm / .html 格式</p>
+  <p class="multi-hint">✦ 支持同时拖入多个文件，合并分析或横向对比</p>
   <div class="offset-row">
     <label for="tz-offset">平台时间 → 北京时间，偏移小时数：</label>
-    <div class="offset-input-wrap">
-      <button type="button" class="offset-btn" onclick="stepOffset(-1)">−</button>
+    <div class="oiw">
+      <button type="button" class="obtn" onclick="stepOffset(-1)">−</button>
       <input type="number" id="tz-offset" value="5" min="-14" max="14" step="1">
-      <button type="button" class="offset-btn" onclick="stepOffset(1)">+</button>
+      <button type="button" class="obtn" onclick="stepOffset(1)">+</button>
     </div>
-    <span class="offset-hint" id="offset-hint">北京时间 = 平台时间 +5 小时</span>
+    <span class="ohint" id="offset-hint">北京时间 = 平台时间 +5 小时</span>
   </div>
-
-  <label class="btn" for="file-input">选择文件</label>
-  <input type="file" id="file-input" accept=".htm,.html">
+  <label class="btn" for="file-input">选择文件（可多选）</label>
+  <input type="file" id="file-input" accept=".htm,.html" multiple>
 </div>
 
 <div id="error-msg"></div>
 <div id="loading"><div class="spinner"></div><p>正在解析账单数据...</p></div>
 
-<!-- Results -->
-<div id="results">
+<div id="results" style="display:none">
 
-  <!-- Account Info -->
-  <div class="account-banner" id="account-banner"></div>
-
-  <!-- Stats -->
-  <div class="section-title">📈 交易绩效统计</div>
-  <div class="stats-grid" id="stats-grid"></div>
-
-  <!-- Chart 1 -->
-  <div class="section-title">💰 资金净值 / 累计收益曲线</div>
-  <div class="chart-wrapper">
-    <div id="chart1" style="height:380px;"></div>
+  <!-- Filter Bar -->
+  <div id="filter-bar">
+    <div class="fg">
+      <label>日期范围</label>
+      <input type="date" class="fdate" id="fd-start" onchange="onFC()">
+      <span class="fsep">至</span>
+      <input type="date" class="fdate" id="fd-end" onchange="onFC()">
+    </div>
+    <div class="fg">
+      <label>品种</label>
+      <select class="fsel" id="f-symbol" onchange="onFC()"><option value="all">全部</option></select>
+    </div>
+    <div class="fg">
+      <label>策略/注释</label>
+      <select class="fsel" id="f-comment" onchange="onFC()"><option value="all">全部</option></select>
+    </div>
+    <button class="freset" onclick="resetFilters()">✕ 重置</button>
   </div>
 
-  <!-- Chart 2 -->
-  <div class="section-title">🎯 进场时机监控：开仓时间 × 单笔盈亏分布</div>
-  <div class="chart-wrapper">
-    <div id="chart2" style="height:380px;"></div>
+  <!-- View Toggle Bar -->
+  <div id="vtbar">
+    <div class="ftags" id="file-tags"></div>
+    <div class="twrap">
+      <button class="tbtn active" id="btn-merged"  onclick="setView('merged')">合并视角</button>
+      <button class="tbtn"        id="btn-compare" onclick="setView('compare')">对比视角</button>
+    </div>
   </div>
 
-  <!-- Chart 3 -->
-  <div class="section-title">📅 持仓甘特图：开仓 → 平仓时间轴 &nbsp;<span style="font-weight:400;color:var(--text-muted);font-size:12px;">🟢 盈利 &nbsp;🔴 亏损 &nbsp;· 可叠加 K 线图比对开平仓逻辑</span></div>
-  <div class="chart-wrapper" style="padding:12px 8px 8px;">
-    <div id="chart3"></div>
+  <!-- MERGED VIEW -->
+  <div id="view-merged">
+    <div class="abanner" id="abanner"></div>
+    <div class="st">📈 交易绩效统计</div>
+    <div class="sgrid" id="sgrid"></div>
+    <div class="st">💰 资金净值 / 累计收益曲线</div>
+    <div class="cw"><div id="c1" style="height:360px"></div></div>
+    <div class="st">🎯 进场时机监控：开仓时间 × 单笔盈亏分布</div>
+    <div class="cw"><div id="c2" style="height:360px"></div></div>
+    <div class="st">📅 持仓甘特图 &nbsp;<span style="font-weight:400;color:var(--muted);font-size:12px">🟢 盈利 &nbsp;🔴 亏损 · 可叠加 K 线复盘</span></div>
+    <div class="cw" style="padding:12px 8px 8px"><div id="c3"></div></div>
   </div>
 
-  <!-- Trade Table -->
-  <div class="section-title table-section">📋 已平仓交易明细</div>
-  <div class="table-scroll">
-    <table id="trade-table">
-      <thead>
-        <tr>
-          <th>订单号</th>
-          <th>类型</th>
-          <th>品种</th>
-          <th>手数</th>
-          <th>开仓时间(北京)</th>
-          <th>开仓价</th>
-          <th>平仓时间(北京)</th>
-          <th>平仓价</th>
-          <th>持仓(分钟)</th>
-          <th>盈亏 (USD)</th>
-        </tr>
-      </thead>
-      <tbody id="trade-tbody"></tbody>
-    </table>
+  <!-- COMPARE VIEW -->
+  <div id="view-compare" style="display:none">
+    <div class="st">📊 各文件绩效对比</div>
+    <div class="cwrap"><table class="ctable" id="ctable"></table></div>
+    <div class="st">💰 各文件累计收益曲线对比</div>
+    <div class="cw"><div id="c1c" style="height:360px"></div></div>
+    <div class="st">🎯 进场时机分布（按文件着色）</div>
+    <div class="cw"><div id="c2c" style="height:360px"></div></div>
+    <div class="st">📅 持仓甘特图（按文件着色）</div>
+    <div class="cw" style="padding:12px 8px 8px"><div id="c3c"></div></div>
   </div>
 
-  <button id="reset-btn">↩ 重新上传</button>
+  <!-- Trade Table (shared) -->
+  <div style="margin-top:10px">
+    <div class="thr" onclick="toggleTable()">
+      <div class="st" style="margin:0;border:none;padding:0">📋 已平仓交易明细</div>
+      <span class="ticon" id="ticon">▼</span>
+    </div>
+    <div id="tcontent">
+      <div class="tscroll">
+        <table class="tt">
+          <thead><tr>
+            <th onclick="setSort('sourceFile')">来源<span class="sico" id="si-sourceFile"></span></th>
+            <th onclick="setSort('ticket')">订单号<span class="sico" id="si-ticket"></span></th>
+            <th onclick="setSort('type')">类型<span class="sico" id="si-type"></span></th>
+            <th onclick="setSort('item')">品种<span class="sico" id="si-item"></span></th>
+            <th>手数</th>
+            <th onclick="setSort('openTimeBJ')">开仓时间(北京)<span class="sico" id="si-openTimeBJ"></span></th>
+            <th>开仓价</th>
+            <th onclick="setSort('closeTimeBJ')">平仓时间(北京)<span class="sico" id="si-closeTimeBJ"></span></th>
+            <th>平仓价</th>
+            <th onclick="setSort('holdingMin')">持仓时长<span class="sico" id="si-holdingMin"></span></th>
+            <th>注释</th>
+            <th onclick="setSort('netProfit')">盈亏(USD)<span class="sico" id="si-netProfit"></span></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="pag" id="pag"></div>
+    </div>
+  </div>
+
+  <button id="reset-btn" onclick="resetAll()">↩ 重新上传</button>
 </div>
 
 <script>
-// ============================================================
-//  工具函数
-// ============================================================
-function getBJOffsetMS() {
-  const v = parseFloat(document.getElementById('tz-offset').value);
-  return (isNaN(v) ? 5 : v) * 3600 * 1000;
-}
+// ── Constants ──────────────────────────────────────────────────
+const FILE_COLORS = ['#4f8ef7','#f5c842','#26a69a','#ef5350','#ab47bc','#26c6da','#ff7043','#9ccc65'];
+
+// ── State ──────────────────────────────────────────────────────
+const S = {
+  files: [],          // [{fileName, initialBalance, accountInfo, trades[]}]
+  allTrades: [],
+  filteredTrades: [],
+  viewMode: 'merged',
+  filters: { dateStart:'', dateEnd:'', symbol:'all', comment:'all' },
+  sort: { key:'closeTimeBJ', dir:'asc' },
+  page: 1,
+  pageSize: 20,
+};
+
+// ── Utils ──────────────────────────────────────────────────────
+const getBJms  = () => (parseFloat(document.getElementById('tz-offset').value) || 5) * 3600000;
+const fmtDT    = d => d ? d.toISOString().replace('T',' ').slice(0,19) : '-';
+const fmtDate  = d => d ? d.toISOString().slice(0,10) : '';
+const fmtN     = (n,d=2) => (n>=0?'+':'')+n.toFixed(d);
+const nCls     = n => n>0?'pos':n<0?'neg':'neu';
+const pNum     = s => parseFloat(String(s).replace(/\s/g,'').replace(',','.')) || 0;
+const holdFmt  = m => m>=60?(m/60).toFixed(1)+'h':m+'min';
 
 function parseMT4Date(str) {
-  // "2026.03.09 17:46:21"
   const m = str.trim().match(/^(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
-  if (!m) return null;
-  // 用 UTC 构造，避免本地时区干扰
-  return new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]));
+  return m ? new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6])) : null;
 }
 
-function fmtDatetime(d) {
-  if (!d) return '-';
-  return d.toISOString().replace('T', ' ').slice(0, 19);
+function extractComment(title) {
+  if (!title) return '';
+  const m = title.match(/^#\d+\s+(.+)$/);
+  if (!m) return '';
+  const rest = m[1].trim();
+  return /^(to|from)\s+#\d+/.test(rest) ? '' : rest;
 }
 
-function fmtNum(n, dec=2) {
-  return (n >= 0 ? '+' : '') + n.toFixed(dec);
+function withCum(trades) {
+  const s = [...trades].sort((a,b) => a.closeTimeBJ - b.closeTimeBJ);
+  let c = 0;
+  return s.map(t => ({ ...t, cumulativeProfit: (c += t.netProfit) }));
 }
 
-function numColor(n) {
-  if (n > 0) return 'positive';
-  if (n < 0) return 'negative';
-  return 'neutral';
-}
-
-function parseNum(s) {
-  // 去掉千位分隔空格再转数字
-  return parseFloat(String(s).replace(/\s/g, '').replace(',', '.')) || 0;
-}
-
-// ============================================================
-//  核心：解析 MT4 HTML
-// ============================================================
-function parseMT4(htmlText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlText, 'text/html');
-
-  // 提取账户基本信息（从页面文本）
-  const bodyText = doc.body ? doc.body.innerText : '';
-  const accountMatch = bodyText.match(/Account:\s*(\d+)/);
-  const nameMatch = bodyText.match(/Name:\s*([^\n]+)/);
-  const currencyMatch = bodyText.match(/Currency:\s*([A-Z]+)/);
-
+// ── Parse MT4 HTML ─────────────────────────────────────────────
+function parseMT4(html, fileName) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const bt  = doc.body?.innerText || '';
   const accountInfo = {
-    account: accountMatch ? accountMatch[1].trim() : '-',
-    name: nameMatch ? nameMatch[1].trim() : '-',
-    currency: currencyMatch ? currencyMatch[1].trim() : 'USD',
+    account:  (bt.match(/Account:\s*(\d+)/)||['','?'])[1].trim(),
+    name:     (bt.match(/Name:\s*([^\n]+)/)||['','?'])[1].trim(),
+    currency: (bt.match(/Currency:\s*([A-Z]+)/)||['','USD'])[1].trim(),
   };
 
-  // 找主表格（含 Ticket 列头的那张）
-  const tables = doc.querySelectorAll('table');
-  let mainTable = null;
-  let headerRowIdx = -1;
-
-  for (const tbl of tables) {
+  let mainTable = null, headerRowIdx = -1;
+  for (const tbl of doc.querySelectorAll('table')) {
     const rows = tbl.querySelectorAll('tr');
     for (let i = 0; i < rows.length; i++) {
-      const cells = rows[i].querySelectorAll('td');
-      // 找到 "Ticket" 所在行
-      if (cells.length > 0 && cells[0].textContent.trim().toLowerCase() === 'ticket') {
-        mainTable = tbl;
-        headerRowIdx = i;
-        break;
+      const c = rows[i].querySelectorAll('td');
+      if (c.length && c[0].textContent.trim().toLowerCase() === 'ticket') {
+        mainTable = tbl; headerRowIdx = i; break;
       }
     }
     if (mainTable) break;
   }
+  if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格，请确认是 MT4 导出的账单文件。`);
 
-  if (!mainTable) throw new Error('未找到交易数据表格，请确认文件格式为 MT4 导出的账单 HTM 文件。');
-
-  const allRows = mainTable.querySelectorAll('tr');
+  const rows = mainTable.querySelectorAll('tr');
   const trades = [];
+  let initialBalance = 0;
+  const bjMs = getBJms();
 
-  for (let i = headerRowIdx + 1; i < allRows.length; i++) {
-    const cells = allRows[i].querySelectorAll('td');
-    if (cells.length < 14) continue;
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
+    const c = rows[i].querySelectorAll('td');
+    if (c.length < 14) continue;
+    const ticket = c[0].textContent.trim();
+    const type   = c[2].textContent.trim().toLowerCase();
 
-    const ticket = cells[0].textContent.trim();
-    const type   = cells[2].textContent.trim().toLowerCase();
+    if (type === 'balance' && initialBalance === 0)
+      initialBalance = pNum(c[c.length-1].textContent);
 
-    // 只要 buy / sell
-    if (!['buy', 'sell'].includes(type)) continue;
-    // Ticket 必须是数字
-    if (!/^\d+$/.test(ticket)) continue;
-    // 遇到 Open Trades / Working Orders 就结束
-    if (cells[0].textContent.includes('Open Trades') ||
-        cells[0].textContent.includes('Working Orders')) break;
+    if (!['buy','sell'].includes(type) || !/^\d+$/.test(ticket)) continue;
 
-    const openTimeUTC  = parseMT4Date(cells[1].textContent);
-    const closeTimeUTC = parseMT4Date(cells[8].textContent);
-    if (!openTimeUTC || !closeTimeUTC) continue;
+    const openUTC  = parseMT4Date(c[1].textContent);
+    const closeUTC = parseMT4Date(c[8].textContent);
+    if (!openUTC || !closeUTC) continue;
 
-    const bjMs = getBJOffsetMS();
-    const openTimeBJ  = new Date(openTimeUTC.getTime()  + bjMs);
-    const closeTimeBJ = new Date(closeTimeUTC.getTime() + bjMs);
+    const openTimeBJ  = new Date(openUTC.getTime()  + bjMs);
+    const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
+    const profit      = pNum(c[13].textContent);
+    const commission  = pNum(c[10].textContent);
+    const swap        = pNum(c[12].textContent);
+    const netProfit   = profit + commission + swap;
+    const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
+    const comment     = extractComment(c[0].getAttribute('title'));
+    const h = openTimeBJ.getUTCHours();
+    const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
 
-    const profit     = parseNum(cells[13].textContent);
-    const commission = parseNum(cells[10].textContent);
-    const swap       = parseNum(cells[12].textContent);
-    const netProfit  = profit + commission + swap;
-
-    const holdingMin = Math.round((closeTimeUTC - openTimeUTC) / 60000);
-
-    trades.push({
-      ticket,
-      openTimeBJ, closeTimeBJ,
-      type,
-      size:        parseNum(cells[3].textContent),
-      item:        cells[4].textContent.trim().toUpperCase(),
-      openPrice:   parseNum(cells[5].textContent),
-      closePrice:  parseNum(cells[9].textContent),
-      profit, commission, swap, netProfit,
-      holdingMin,
-    });
+    trades.push({ ticket, openTimeBJ, closeTimeBJ, type,
+      size: pNum(c[3].textContent), item: c[4].textContent.trim().toUpperCase(),
+      openPrice: pNum(c[5].textContent), closePrice: pNum(c[9].textContent),
+      profit, commission, swap, netProfit, holdingMin,
+      comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0 });
   }
 
-  if (trades.length === 0) throw new Error('账单中没有找到已平仓的 buy/sell 交易记录。');
+  if (!trades.length) throw new Error(`"${fileName}" 中没有找到已平仓的 buy/sell 记录。`);
+  return { accountInfo, trades, initialBalance, fileName };
+}
 
-  // 按平仓时间排序
-  trades.sort((a, b) => a.closeTimeBJ - b.closeTimeBJ);
+// ── Load files ─────────────────────────────────────────────────
+function processFiles(files) {
+  if (!files?.length) return;
+  showSec('loading');
+  Promise.all(Array.from(files).map(f =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => { try { res(parseMT4(e.target.result, f.name)); } catch(err) { rej(err); } };
+      r.onerror = () => rej(new Error(`读取 "${f.name}" 失败`));
+      r.readAsText(f, 'utf-8');
+    })
+  )).then(results => {
+    S.files = results;
+    S.allTrades = results.flatMap((r, idx) => r.trades.map(t => ({ ...t, sourceIndex: idx })));
+    S.allTrades.sort((a,b) => a.closeTimeBJ - b.closeTimeBJ);
+    populateFilters();
+    setDateDefaults();
+    applyFilters();
+    renderAll();
+    showSec('results');
+  }).catch(err => showErr(err.message || String(err)));
+}
 
-  // 计算累计盈亏
-  let cum = 0;
-  for (const t of trades) {
-    cum += t.netProfit;
-    t.cumulativeProfit = cum;
+// ── Filters ────────────────────────────────────────────────────
+function populateFilters() {
+  const symbols  = [...new Set(S.allTrades.map(t => t.item))].sort();
+  const comments = [...new Set(S.allTrades.map(t => t.comment).filter(Boolean))].sort();
+
+  document.getElementById('f-symbol').innerHTML =
+    '<option value="all">全部</option>' + symbols.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById('f-comment').innerHTML =
+    '<option value="all">全部</option>' +
+    (comments.length ? comments.map(c=>`<option value="${c}">${c}</option>`).join('')
+                     : '<option disabled>（账单中无注释）</option>');
+}
+
+function setDateDefaults() {
+  const dates = S.allTrades.map(t => fmtDate(t.closeTimeBJ));
+  const mn = dates.reduce((a,b) => a<b?a:b, dates[0]);
+  const mx = dates.reduce((a,b) => a>b?a:b, dates[0]);
+  const s = document.getElementById('fd-start'), e = document.getElementById('fd-end');
+  s.min = s.value = mn; e.max = e.value = mx;
+  S.filters.dateStart = mn; S.filters.dateEnd = mx;
+}
+
+function applyFilters() {
+  const { dateStart, dateEnd, symbol, comment } = S.filters;
+  let t = S.allTrades;
+  if (dateStart) { const d = new Date(dateStart+'T00:00:00Z'); t = t.filter(x => x.closeTimeBJ >= d); }
+  if (dateEnd)   { const d = new Date(dateEnd  +'T23:59:59Z'); t = t.filter(x => x.closeTimeBJ <= d); }
+  if (symbol  !== 'all') t = t.filter(x => x.item    === symbol);
+  if (comment !== 'all') t = t.filter(x => x.comment === comment);
+  S.filteredTrades = t; S.page = 1;
+}
+
+function onFC() {
+  S.filters.dateStart = document.getElementById('fd-start').value;
+  S.filters.dateEnd   = document.getElementById('fd-end').value;
+  S.filters.symbol    = document.getElementById('f-symbol').value;
+  S.filters.comment   = document.getElementById('f-comment').value;
+  applyFilters(); renderAll();
+}
+
+function resetFilters() {
+  setDateDefaults();
+  document.getElementById('f-symbol').value = 'all';
+  document.getElementById('f-comment').value = 'all';
+  S.filters.symbol = 'all'; S.filters.comment = 'all';
+  applyFilters(); renderAll();
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function calcStats(trades, ib) {
+  const n = trades.length; if (!n) return null;
+  const wins   = trades.filter(t => t.netProfit > 0);
+  const losses = trades.filter(t => t.netProfit < 0);
+  const wr     = wins.length / n * 100;
+  const tp     = trades.reduce((s,t) => s+t.netProfit, 0);
+  const mxW    = wins.length   ? Math.max(...wins.map(t=>t.netProfit))   : 0;
+  const mxL    = losses.length ? Math.min(...losses.map(t=>t.netProfit)) : 0;
+  const aW     = wins.length   ? wins.reduce((s,t)=>s+t.netProfit,0)/wins.length       : 0;
+  const aL     = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.netProfit,0)/losses.length) : 0;
+  const pf     = aL > 0 ? aW/aL : Infinity;
+  const aH     = trades.reduce((s,t) => s+t.holdingMin, 0)/n;
+  const exp    = (wr/100*aW) - ((1-wr/100)*aL);
+  const items  = [...new Set(trades.map(t=>t.item))];
+
+  // Max drawdown
+  const tc = withCum(trades); let peak=0, maxDD=0;
+  for (const t of tc) {
+    if (t.cumulativeProfit > peak) peak = t.cumulativeProfit;
+    const dd = peak - t.cumulativeProfit;
+    if (dd > maxDD) maxDD = dd;
+  }
+  const maxDDPct = (ib+peak)>0 ? maxDD/(ib+peak)*100 : 0;
+
+  // Consecutive
+  let mCW=0, mCL=0, cw=0, cl=0;
+  for (const t of tc) {
+    if (t.netProfit>0) { cw++; cl=0; if(cw>mCW) mCW=cw; }
+    else               { cl++; cw=0; if(cl>mCL) mCL=cl; }
   }
 
-  return { accountInfo, trades };
+  // Buy / Sell split
+  const buys  = trades.filter(t=>t.type==='buy');
+  const sells = trades.filter(t=>t.type==='sell');
+  const bwr = buys.length  ? buys.filter(t=>t.netProfit>0).length /buys.length *100  : null;
+  const swr = sells.length ? sells.filter(t=>t.netProfit>0).length/sells.length*100 : null;
+
+  return { n, wins:wins.length, losses:losses.length, wr, tp, mxW, mxL, aW, aL, pf, aH, exp,
+           items, maxDD, maxDDPct, mCW, mCL, bwr, swr, bN:buys.length, sN:sells.length };
 }
 
-// ============================================================
-//  计算统计数据
-// ============================================================
-function calcStats(trades) {
-  const total      = trades.length;
-  const wins       = trades.filter(t => t.netProfit > 0);
-  const losses     = trades.filter(t => t.netProfit < 0);
-  const totalProfit = trades.reduce((s, t) => s + t.netProfit, 0);
-  const winRate    = total > 0 ? wins.length / total * 100 : 0;
-
-  const maxWin  = wins.length  ? Math.max(...wins.map(t => t.netProfit))  : 0;
-  const maxLoss = losses.length ? Math.min(...losses.map(t => t.netProfit)) : 0;
-
-  const avgWin  = wins.length   ? wins.reduce((s,t) => s+t.netProfit, 0) / wins.length     : 0;
-  const avgLoss = losses.length ? Math.abs(losses.reduce((s,t) => s+t.netProfit, 0) / losses.length) : 0;
-  const profitFactor = avgLoss > 0 ? avgWin / avgLoss : Infinity;
-
-  const avgHolding = trades.reduce((s, t) => s + t.holdingMin, 0) / total;
-
-  const items = [...new Set(trades.map(t => t.item))];
-
-  return { total, wins: wins.length, losses: losses.length, totalProfit,
-           winRate, maxWin, maxLoss, avgWin, avgLoss, profitFactor, avgHolding, items };
+// ── Render dispatcher ──────────────────────────────────────────
+function renderAll() {
+  renderFileTags();
+  if (S.viewMode === 'merged') renderMerged();
+  else                         renderCompare();
+  renderTable();
 }
 
-// ============================================================
-//  渲染 UI
-// ============================================================
-function renderAccountBanner(info, stats) {
-  const el = document.getElementById('account-banner');
-  el.innerHTML = `
-    <div class="account-item"><span class="label">账户号</span><span class="value">${info.account}</span></div>
-    <div class="account-item"><span class="label">持有人</span><span class="value">${info.name}</span></div>
-    <div class="account-item"><span class="label">货币</span><span class="value">${info.currency}</span></div>
-    <div class="account-item"><span class="label">交易品种</span><span class="value">${stats.items.join(', ')}</span></div>
-  `;
+function renderFileTags() {
+  document.getElementById('file-tags').innerHTML = S.files.map((f,i) =>
+    `<div class="ftag"><span class="fdot" style="background:${FILE_COLORS[i%8]}"></span>${f.fileName}</div>`
+  ).join('');
 }
 
-function renderStats(stats) {
-  const grid = document.getElementById('stats-grid');
-  const pfStr = isFinite(stats.profitFactor) ? stats.profitFactor.toFixed(2) : '∞';
-  const pfColor = stats.profitFactor >= 1.5 ? 'positive' : stats.profitFactor >= 1 ? 'highlight' : 'negative';
+// ── Merged view ────────────────────────────────────────────────
+function renderMerged() {
+  const ft  = S.filteredTrades; if (!ft.length) return;
+  const ftc = withCum(ft);
+  const ib  = S.files.reduce((s,f)=>s+f.initialBalance,0);
+  const st  = calcStats(ft, ib); if (!st) return;
+
+  // Banner
+  const ab = S.files.map((f,i) =>
+    `<div class="ai"><span class="alabel">账号</span><span class="aval">${f.accountInfo.account}</span></div>
+     <div class="ai"><span class="alabel">持有人</span><span class="aval">${f.accountInfo.name}</span></div>` +
+    (i < S.files.length-1 ? '<div class="adiv"></div>' : '')
+  ).join('');
+  document.getElementById('abanner').innerHTML = ab +
+    `<div class="ai"><span class="alabel">筛选笔数</span><span class="aval hi">${ft.length} 笔</span></div>
+     <div class="ai"><span class="alabel">品种</span><span class="aval">${st.items.join(', ')}</span></div>`;
+
+  renderStats(st);
+  plotC1Merged(ftc);
+  plotC2Merged(ft);
+  plotGantt(ft, 'c3', false);
+}
+
+function renderStats(s) {
+  const pfS = isFinite(s.pf) ? s.pf.toFixed(2) : '∞';
+  const pfC = s.pf>=1.5?'pos':s.pf>=1?'hi':'neg';
+  const ddC = s.maxDDPct>20?'neg':s.maxDDPct>10?'hi':'pos';
 
   const cards = [
-    { label: '总平仓笔数', value: stats.total + ' 笔', sub: `盈${stats.wins} / 亏${stats.losses}`, cls: 'neutral' },
-    { label: '策略胜率',   value: stats.winRate.toFixed(1) + '%', sub: '按笔数', cls: stats.winRate >= 50 ? 'positive' : 'negative' },
-    { label: '总净利润',   value: fmtNum(stats.totalProfit) + ' USD', sub: '', cls: numColor(stats.totalProfit) },
-    { label: '最大单笔盈',  value: '+' + stats.maxWin.toFixed(2) + ' USD', sub: '', cls: 'positive' },
-    { label: '最大单笔亏',  value: stats.maxLoss.toFixed(2) + ' USD', sub: '', cls: 'negative' },
-    { label: '平均盈利',   value: fmtNum(stats.avgWin) + ' USD', sub: '', cls: 'positive' },
-    { label: '平均亏损',   value: '-' + stats.avgLoss.toFixed(2) + ' USD', sub: '', cls: 'negative' },
-    { label: '盈亏比',     value: pfStr, sub: '平均盈/平均亏', cls: pfColor },
-    { label: '平均持仓',   value: stats.avgHolding >= 60
-        ? (stats.avgHolding/60).toFixed(1) + ' 小时'
-        : Math.round(stats.avgHolding) + ' 分钟', sub: '', cls: 'neutral' },
+    { l:'总平仓笔数', v:`${s.n} 笔`,             sub:`盈 ${s.wins} / 亏 ${s.losses}`, c:'neu' },
+    { l:'策略胜率',   v:`${s.wr.toFixed(1)}%`,   sub:'按笔数',  c:s.wr>=50?'pos':'neg' },
+    { l:'总净利润',   v:`${fmtN(s.tp)} USD`,     sub:'',        c:nCls(s.tp) },
+    { l:'数学期望',   v:`${fmtN(s.exp,2)} USD`,  sub:'每笔期望收益', c:nCls(s.exp) },
+    { l:'最大回撤',   v:`-${s.maxDD.toFixed(2)} USD`, sub:`${s.maxDDPct.toFixed(1)}% 回撤率`, c:ddC },
+    { l:'最大连胜',   v:`${s.mCW} 笔`,           sub:'连续盈利', c:'pos' },
+    { l:'最大连亏',   v:`${s.mCL} 笔`,           sub:'连续亏损', c:'neg' },
+    { l:'做多胜率',   v:s.bwr!=null?`${s.bwr.toFixed(1)}%`:'N/A', sub:`Buy ${s.bN} 笔`,  c:s.bwr>=50?'pos':'neg' },
+    { l:'做空胜率',   v:s.swr!=null?`${s.swr.toFixed(1)}%`:'N/A', sub:`Sell ${s.sN} 笔`, c:s.swr>=50?'pos':'neg' },
+    { l:'盈亏比',     v:pfS,                     sub:'平均盈/平均亏', c:pfC },
+    { l:'最大单笔盈', v:`+${s.mxW.toFixed(2)} USD`, sub:'', c:'pos' },
+    { l:'最大单笔亏', v:`${s.mxL.toFixed(2)} USD`,  sub:'', c:'neg' },
+    { l:'平均持仓',   v:holdFmt(s.aH),           sub:'', c:'neu' },
   ];
-
-  grid.innerHTML = cards.map(c => `
-    <div class="stat-card">
-      <div class="stat-label">${c.label}</div>
-      <div class="stat-value ${c.cls}">${c.value}</div>
-      ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ''}
-    </div>
-  `).join('');
+  document.getElementById('sgrid').innerHTML = cards.map(c =>
+    `<div class="sc"><div class="slabel">${c.l}</div><div class="sval ${c.c}">${c.v}</div>${c.sub?`<div class="ssub">${c.sub}</div>`:''}</div>`
+  ).join('');
 }
 
-// ============================================================
-//  Plotly 图表
-// ============================================================
-const PLOTLY_LAYOUT_BASE = {
-  paper_bgcolor: 'transparent',
-  plot_bgcolor:  '#161929',
-  font: { color: '#e8eaf0', family: 'Segoe UI, system-ui, sans-serif', size: 12 },
-  xaxis: { gridcolor: '#1e2235', linecolor: '#2e3250', tickfont: { size: 11 } },
-  yaxis: { gridcolor: '#1e2235', linecolor: '#2e3250', tickfont: { size: 11 } },
-  margin: { l: 60, r: 20, t: 40, b: 60 },
-  hovermode: 'closest',
+// ── Plotly base ────────────────────────────────────────────────
+const PLY = {
+  paper_bgcolor:'transparent', plot_bgcolor:'#161929',
+  font:{color:'#e8eaf0',family:'Segoe UI,system-ui,sans-serif',size:12},
+  xaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
+  yaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
+  margin:{l:60,r:20,t:40,b:60}, hovermode:'closest',
+  legend:{bgcolor:'transparent',bordercolor:'#2e3250'},
 };
 
-function renderChart1(trades) {
-  const x  = trades.map(t => t.closeTimeBJ);
-  const y  = trades.map(t => t.cumulativeProfit);
-  const hoverText = trades.map(t =>
-    `<b>订单 #${t.ticket}</b><br>` +
-    `平仓时间: ${fmtDatetime(t.closeTimeBJ)}<br>` +
-    `单笔盈亏: ${fmtNum(t.netProfit)} USD<br>` +
-    `累计盈亏: ${fmtNum(t.cumulativeProfit)} USD`
-  );
-
-  const finalProfit = y[y.length - 1] || 0;
-  const lineColor   = finalProfit >= 0 ? '#26a69a' : '#ef5350';
-
-  const trace = {
-    x, y,
-    type: 'scatter', mode: 'lines+markers',
-    line: { color: lineColor, width: 2.5 },
-    marker: { size: 5, color: lineColor },
-    text: hoverText, hoverinfo: 'text',
-    name: '累计净利润',
-    fill: 'tozeroy',
-    fillcolor: finalProfit >= 0 ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)',
-  };
-
-  const shapes = [{
-    type: 'line', x0: x[0], x1: x[x.length-1], y0: 0, y1: 0,
-    line: { color: '#8b90a8', width: 1, dash: 'dash' }
-  }];
-
-  Plotly.newPlot('chart1', [trace], {
-    ...PLOTLY_LAYOUT_BASE,
-    title: { text: '策略资金净值 / 累计收益曲线（按平仓时间）', font: { size: 14 } },
-    shapes,
-    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: '平仓时间（北京）' },
-    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: '累计净利润（USD）' },
-  }, { responsive: true, displayModeBar: false });
+function plotC1Merged(ftc) {
+  const x=ftc.map(t=>t.closeTimeBJ), y=ftc.map(t=>t.cumulativeProfit);
+  const fp=y.length?y[y.length-1]:0, lc=fp>=0?'#26a69a':'#ef5350';
+  Plotly.newPlot('c1',[{
+    x,y,type:'scatter',mode:'lines+markers',
+    line:{color:lc,width:2.5},marker:{size:5,color:lc},
+    fill:'tozeroy',fillcolor:fp>=0?'rgba(38,166,154,.1)':'rgba(239,83,80,.1)',
+    text:ftc.map(t=>`<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} USD<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
+    hoverinfo:'text',name:'累计净利润',
+  }],{...PLY,
+    title:{text:'策略资金净值 / 累计收益曲线',font:{size:14}},
+    shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:0,y1:0,line:{color:'#8b90a8',width:1,dash:'dash'}}],
+    xaxis:{...PLY.xaxis,title:'平仓时间（北京）'},
+    yaxis:{...PLY.yaxis,title:'累计净利润（USD）'},
+  },{responsive:true,displayModeBar:false});
 }
 
-function renderChart2(trades) {
-  const wins   = trades.filter(t => t.netProfit > 0);
-  const losses = trades.filter(t => t.netProfit <= 0);
+function plotC2Merged(ft) {
+  const mk = (arr,label,color) => ({
+    x:arr.map(t=>t.openTimeBJ), y:arr.map(t=>t.netProfit),
+    type:'scatter',mode:'markers',
+    marker:{size:9,color,opacity:.85,line:{width:1,color:'#0f1117'}},
+    text:arr.map(t=>`<b>#${t.ticket}</b><br>${t.type.toUpperCase()} ${t.item} ${t.size}手<br>开: ${fmtDT(t.openTimeBJ)}<br>平: ${fmtDT(t.closeTimeBJ)}<br>持仓: ${holdFmt(t.holdingMin)}<br>盈亏: ${fmtN(t.netProfit)} USD`),
+    hoverinfo:'text',name:label,
+  });
+  const allX=ft.map(t=>t.openTimeBJ.getTime());
+  Plotly.newPlot('c2',[
+    mk(ft.filter(t=>t.netProfit>0), '盈利','#26a69a'),
+    mk(ft.filter(t=>t.netProfit<=0),'亏损','#ef5350'),
+  ],{...PLY,
+    title:{text:'进场时机监控：开仓时间 × 盈亏分布',font:{size:14}},
+    shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1}}],
+    xaxis:{...PLY.xaxis,title:'开仓时间（北京）'},
+    yaxis:{...PLY.yaxis,title:'单笔盈亏（USD）'},
+  },{responsive:true,displayModeBar:false});
+}
 
-  function makeTrace(arr, label, color) {
+function plotGantt(trades, divId, byFile) {
+  const sorted=[...trades].sort((a,b)=>a.openTimeBJ-b.openTimeBJ||a.closeTimeBJ-b.closeTimeBJ);
+  Plotly.newPlot(divId,[{
+    type:'bar',orientation:'h',
+    base:sorted.map(t=>t.openTimeBJ.toISOString()),
+    x:sorted.map(t=>t.closeTimeBJ-t.openTimeBJ),
+    y:sorted.map(t=>`${t.type.toUpperCase()} #${t.ticket}`),
+    marker:{
+      color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'rgba(38,166,154,.82)':'rgba(239,83,80,.82)'),
+      line:{color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'#1a9990':'#c62828'),width:1},
+    },
+    text:sorted.map(t=>`<b>${t.type.toUpperCase()} #${t.ticket}</b><br>品种: ${t.item} 手数: ${t.size}<br>开: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>平: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>持仓: ${holdFmt(t.holdingMin)}<br>${byFile?'来源: '+t.sourceFile+'<br>':''}盈亏: <b>${fmtN(t.netProfit)} USD</b>`),
+    hoverinfo:'text',showlegend:false,
+  }],{...PLY,
+    title:{text:'持仓甘特图（开仓 → 平仓时间轴）',font:{size:14}},
+    xaxis:{...PLY.xaxis,type:'date',title:'时间（北京）',tickformat:'%H:%M',side:'top'},
+    yaxis:{...PLY.yaxis,automargin:true,autorange:'reversed',tickfont:{size:10}},
+    height:Math.min(Math.max(320,sorted.length*26+130),1600),
+    margin:{l:140,r:20,t:70,b:20},
+  },{responsive:true,displayModeBar:true,scrollZoom:false});
+}
+
+// ── Compare view ───────────────────────────────────────────────
+function renderCompare() {
+  const ft=S.filteredTrades; if (!ft.length) return;
+  renderCTable();
+  plotC1Compare();
+  plotC2Compare(ft);
+  plotGantt(ft,'c3c',true);
+}
+
+function renderCTable() {
+  const rows = [
+    ['交易日期',  s=>s.date],
+    ['总笔数',    s=>`${s.n} 笔`],
+    ['盈利笔数',  s=>`<span class="pos">${s.wins}</span>`],
+    ['亏损笔数',  s=>`<span class="neg">${s.losses}</span>`],
+    ['胜率',      s=>`<span class="${s.wr>=50?'pos':'neg'}">${s.wr.toFixed(1)}%</span>`],
+    ['总净利润',  s=>`<span class="${nCls(s.tp)}">${fmtN(s.tp)} USD</span>`],
+    ['数学期望',  s=>`<span class="${nCls(s.exp)}">${fmtN(s.exp,2)} USD</span>`],
+    ['最大回撤',  s=>`<span class="neg">-${s.maxDD.toFixed(2)} USD</span>`],
+    ['回撤率',    s=>`<span class="${s.maxDDPct>20?'neg':s.maxDDPct>10?'hi':'pos'}">${s.maxDDPct.toFixed(1)}%</span>`],
+    ['盈亏比',    s=>`<span class="${s.pf>=1.5?'pos':s.pf>=1?'hi':'neg'}">${isFinite(s.pf)?s.pf.toFixed(2):'∞'}</span>`],
+    ['最大连胜',  s=>`<span class="pos">${s.mCW} 笔</span>`],
+    ['最大连亏',  s=>`<span class="neg">${s.mCL} 笔</span>`],
+    ['平均持仓',  s=>holdFmt(s.aH)],
+  ];
+
+  const fstats = S.files.map((f,idx) => {
+    const t = S.filteredTrades.filter(x=>x.sourceIndex===idx);
+    if (!t.length) return null;
+    const st = calcStats(t, f.initialBalance);
+    const dates = [...new Set(t.map(x=>fmtDate(x.closeTimeBJ)))].sort().join(', ');
+    return { ...st, date:dates, fileName:f.fileName, idx };
+  }).filter(Boolean);
+
+  if (!fstats.length) { document.getElementById('ctable').innerHTML='<tr><td>暂无数据</td></tr>'; return; }
+
+  const thead = `<thead><tr><th>指标</th>${fstats.map(s=>`<th><span class="cdot" style="background:${FILE_COLORS[s.idx%8]}"></span>${s.fileName}</th>`).join('')}</tr></thead>`;
+  const tbody = '<tbody>' + rows.map(([label,fn])=>`<tr><td>${label}</td>${fstats.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+  document.getElementById('ctable').innerHTML = thead + tbody;
+}
+
+function plotC1Compare() {
+  const traces = S.files.map((f,idx) => {
+    const t = S.filteredTrades.filter(x=>x.sourceIndex===idx);
+    if (!t.length) return null;
+    const tc=withCum(t), color=FILE_COLORS[idx%8];
     return {
-      x: arr.map(t => t.openTimeBJ),
-      y: arr.map(t => t.netProfit),
-      type: 'scatter', mode: 'markers',
-      marker: { size: 9, color, opacity: 0.85,
-                line: { width: 1, color: '#0f1117' } },
-      text: arr.map(t =>
-        `<b>订单 #${t.ticket}</b><br>` +
-        `类型: ${t.type.toUpperCase()}  手数: ${t.size}<br>` +
-        `品种: ${t.item}<br>` +
-        `开仓: ${fmtDatetime(t.openTimeBJ)}<br>` +
-        `平仓: ${fmtDatetime(t.closeTimeBJ)}<br>` +
-        `持仓: ${t.holdingMin >= 60 ? (t.holdingMin/60).toFixed(1)+'h' : t.holdingMin+'min'}<br>` +
-        `盈亏: ${fmtNum(t.netProfit)} USD`
-      ),
-      hoverinfo: 'text',
-      name: label,
+      x:tc.map(t=>t.closeTimeBJ), y:tc.map(t=>t.cumulativeProfit),
+      type:'scatter',mode:'lines+markers',line:{color,width:2.5},marker:{size:5,color},
+      text:tc.map(t=>`<b>${f.fileName}</b><br>#${t.ticket}<br>平仓: ${fmtDT(t.closeTimeBJ)}<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
+      hoverinfo:'text',name:f.fileName,
     };
-  }
-
-  const allX = trades.map(t => t.openTimeBJ);
-  const shapes = [{
-    type: 'line',
-    x0: allX.length ? new Date(Math.min(...allX)) : 0,
-    x1: allX.length ? new Date(Math.max(...allX)) : 1,
-    y0: 0, y1: 0,
-    line: { color: '#8b90a8', width: 1 }
-  }];
-
-  Plotly.newPlot('chart2', [
-    makeTrace(wins,   '盈利', '#26a69a'),
-    makeTrace(losses, '亏损', '#ef5350'),
-  ], {
-    ...PLOTLY_LAYOUT_BASE,
-    title: { text: '进场时机监控：单笔订单开仓时间 × 盈亏分布', font: { size: 14 } },
-    shapes,
-    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: '开仓时间（北京）' },
-    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: '单笔盈亏（USD）' },
-    legend: { bgcolor: 'transparent', bordercolor: '#2e3250' },
-  }, { responsive: true, displayModeBar: false });
+  }).filter(Boolean);
+  if (!traces.length) return;
+  const allX=traces.flatMap(t=>t.x.map(d=>d.getTime()));
+  Plotly.newPlot('c1c',traces,{...PLY,
+    title:{text:'各文件累计收益曲线对比',font:{size:14}},
+    shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1,dash:'dash'}}],
+    xaxis:{...PLY.xaxis,title:'平仓时间（北京）'},
+    yaxis:{...PLY.yaxis,title:'累计净利润（USD）'},
+  },{responsive:true,displayModeBar:false});
 }
 
-function renderChart3(trades) {
-  // 按开仓时间升序排列，同时开的单按平仓时间排
-  const sorted = [...trades].sort((a, b) =>
-    a.openTimeBJ - b.openTimeBJ || a.closeTimeBJ - b.closeTimeBJ
-  );
-
-  const trace = {
-    type: 'bar',
-    orientation: 'h',
-    // base = 开仓时间（ISO），x = 持仓时长（ms），Plotly date 轴自动加总
-    base: sorted.map(t => t.openTimeBJ.toISOString()),
-    x:    sorted.map(t => t.closeTimeBJ - t.openTimeBJ),
-    y:    sorted.map(t => `${t.type.toUpperCase()} #${t.ticket}`),
-    marker: {
-      color: sorted.map(t => t.netProfit > 0
-        ? 'rgba(38,166,154,0.82)'
-        : 'rgba(239,83,80,0.82)'
-      ),
-      line: {
-        color: sorted.map(t => t.netProfit > 0 ? '#1a9990' : '#c62828'),
-        width: 1,
-      },
-    },
-    text: sorted.map(t => {
-      const hold = t.holdingMin >= 60
-        ? (t.holdingMin / 60).toFixed(1) + 'h'
-        : t.holdingMin + 'min';
-      return (
-        `<b>${t.type.toUpperCase()} #${t.ticket}</b><br>` +
-        `品种: ${t.item} &nbsp; 手数: ${t.size}<br>` +
-        `开仓: ${fmtDatetime(t.openTimeBJ)} &nbsp; @${t.openPrice.toFixed(2)}<br>` +
-        `平仓: ${fmtDatetime(t.closeTimeBJ)} &nbsp; @${t.closePrice.toFixed(2)}<br>` +
-        `持仓时长: ${hold}<br>` +
-        `盈亏: <b>${fmtNum(t.netProfit)} USD</b>`
-      );
-    }),
-    hoverinfo: 'text',
-    showlegend: false,
-  };
-
-  // 每行 26px + 顶部/底部边距，最高 1600px
-  const h = Math.min(Math.max(320, sorted.length * 26 + 130), 1600);
-
-  Plotly.newPlot('chart3', [trace], {
-    ...PLOTLY_LAYOUT_BASE,
-    title: { text: '持仓甘特图（开仓时间 → 平仓时间）', font: { size: 14 } },
-    xaxis: {
-      ...PLOTLY_LAYOUT_BASE.xaxis,
-      type: 'date',
-      title: '时间（北京）',
-      tickformat: '%H:%M',
-      side: 'top',    // 时间轴放顶部，对标 K 线图阅读习惯
-    },
-    yaxis: {
-      ...PLOTLY_LAYOUT_BASE.yaxis,
-      automargin: true,
-      autorange: 'reversed',  // 最早开单在最顶部
-      tickfont: { size: 10 },
-    },
-    height: h,
-    margin: { l: 140, r: 20, t: 70, b: 20 },
-  }, { responsive: true, displayModeBar: true, scrollZoom: false });
+function plotC2Compare(ft) {
+  const traces = S.files.map((f,idx) => {
+    const t=ft.filter(x=>x.sourceIndex===idx); if (!t.length) return null;
+    const color=FILE_COLORS[idx%8];
+    return {
+      x:t.map(x=>x.openTimeBJ),y:t.map(x=>x.netProfit),
+      type:'scatter',mode:'markers',
+      marker:{size:9,color,opacity:.8,line:{width:1,color:'#0f1117'}},
+      text:t.map(x=>`<b>${f.fileName} · #${x.ticket}</b><br>${x.type.toUpperCase()} ${x.item} ${x.size}手<br>开: ${fmtDT(x.openTimeBJ)}<br>盈亏: ${fmtN(x.netProfit)} USD`),
+      hoverinfo:'text',name:f.fileName,
+    };
+  }).filter(Boolean);
+  if (!traces.length) return;
+  Plotly.newPlot('c2c',traces,{...PLY,
+    title:{text:'进场时机分布（按文件着色）',font:{size:14}},
+    xaxis:{...PLY.xaxis,title:'开仓时间（北京）'},
+    yaxis:{...PLY.yaxis,title:'单笔盈亏（USD）'},
+  },{responsive:true,displayModeBar:false});
 }
 
-function renderTable(trades) {
-  const tbody = document.getElementById('trade-tbody');
-  tbody.innerHTML = trades.map(t => {
-    const profitCls = numColor(t.netProfit);
+// ── Trade Table ────────────────────────────────────────────────
+function renderTable() {
+  const { sort, page, pageSize, filteredTrades:ft } = S;
+  const sorted = [...ft].sort((a,b) => {
+    let av=a[sort.key], bv=b[sort.key];
+    if (av instanceof Date) av=av.getTime(), bv=bv.getTime();
+    if (typeof av==='string') av=av.toLowerCase(), bv=bv.toLowerCase();
+    return av<bv ? (sort.dir==='asc'?-1:1) : av>bv ? (sort.dir==='asc'?1:-1) : 0;
+  });
+
+  ['sourceFile','ticket','type','item','openTimeBJ','closeTimeBJ','holdingMin','netProfit'].forEach(k => {
+    const el=document.getElementById('si-'+k);
+    if (el) el.textContent = sort.key===k ? (sort.dir==='asc'?'↑':'↓') : '';
+  });
+
+  const total=sorted.length, tp=Math.max(1,Math.ceil(total/pageSize));
+  const sp=Math.min(Math.max(1,page),tp); S.page=sp;
+  const slice=sorted.slice((sp-1)*pageSize, sp*pageSize);
+
+  document.getElementById('tbody').innerHTML = slice.map(t => {
+    const hold=holdFmt(t.holdingMin), dc=FILE_COLORS[t.sourceIndex%8];
     return `<tr>
+      <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dc};margin-right:5px;vertical-align:middle"></span>${t.sourceFile}</td>
       <td>${t.ticket}</td>
-      <td><span class="type-${t.type}">${t.type.toUpperCase()}</span></td>
-      <td>${t.item}</td>
-      <td>${t.size}</td>
-      <td>${fmtDatetime(t.openTimeBJ)}</td>
-      <td>${t.openPrice.toFixed(2)}</td>
-      <td>${fmtDatetime(t.closeTimeBJ)}</td>
-      <td>${t.closePrice.toFixed(2)}</td>
-      <td>${t.holdingMin >= 60 ? (t.holdingMin/60).toFixed(1)+'h' : t.holdingMin+'min'}</td>
-      <td class="${profitCls}" style="font-weight:600">${fmtNum(t.netProfit)}</td>
+      <td><span class="ty${t.type}">${t.type.toUpperCase()}</span></td>
+      <td>${t.item}</td><td>${t.size}</td>
+      <td>${fmtDT(t.openTimeBJ)}</td><td>${t.openPrice.toFixed(2)}</td>
+      <td>${fmtDT(t.closeTimeBJ)}</td><td>${t.closePrice.toFixed(2)}</td>
+      <td>${hold}</td>
+      <td style="color:var(--muted);max-width:110px;overflow:hidden;text-overflow:ellipsis">${t.comment||'-'}</td>
+      <td class="${nCls(t.netProfit)}" style="font-weight:600">${fmtN(t.netProfit)}</td>
     </tr>`;
   }).join('');
+
+  const pag=document.getElementById('pag');
+  if (tp<=1) { pag.innerHTML=''; return; }
+  let h=`<span class="pinfo">${(sp-1)*pageSize+1}–${Math.min(sp*pageSize,total)} / ${total} 条</span>`;
+  h+=`<button class="pbtn" onclick="goPage(1)" ${sp===1?'disabled':''}>«</button>`;
+  h+=`<button class="pbtn" onclick="goPage(${sp-1})" ${sp===1?'disabled':''}>‹</button>`;
+  const st2=Math.max(1,sp-2), en=Math.min(tp,st2+4);
+  for (let p=st2;p<=en;p++) h+=`<button class="pbtn${p===sp?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  h+=`<button class="pbtn" onclick="goPage(${sp+1})" ${sp===tp?'disabled':''}>›</button>`;
+  h+=`<button class="pbtn" onclick="goPage(${tp})" ${sp===tp?'disabled':''}>»</button>`;
+  pag.innerHTML=h;
 }
 
-// ============================================================
-//  主流程
-// ============================================================
-function processFile(file) {
-  if (!file) return;
+const goPage  = p => { S.page=p; renderTable(); };
+const setSort = k => { S.sort.dir = S.sort.key===k ? (S.sort.dir==='asc'?'desc':'asc') : 'asc'; S.sort.key=k; S.page=1; renderTable(); };
+const toggleTable = () => { const c=document.getElementById('tcontent'),i=document.getElementById('ticon'); c.classList.toggle('open'); i.classList.toggle('open'); };
 
-  showSection('loading');
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const { accountInfo, trades } = parseMT4(e.target.result);
-      const stats = calcStats(trades);
-
-      renderAccountBanner(accountInfo, stats);
-      renderStats(stats);
-      renderChart1(trades);
-      renderChart2(trades);
-      renderChart3(trades);
-      renderTable(trades);
-
-      showSection('results');
-    } catch (err) {
-      showError(err.message || String(err));
-    }
-  };
-  reader.onerror = () => showError('文件读取失败，请重试。');
-  reader.readAsText(file, 'utf-8');
+// ── View switch ────────────────────────────────────────────────
+function setView(mode) {
+  S.viewMode=mode;
+  document.getElementById('view-merged').style.display  = mode==='merged' ?'':'none';
+  document.getElementById('view-compare').style.display = mode==='compare'?'':'none';
+  document.getElementById('btn-merged').classList.toggle('active',  mode==='merged');
+  document.getElementById('btn-compare').classList.toggle('active', mode==='compare');
+  renderAll();
 }
 
-function showSection(id) {
-  document.getElementById('drop-zone').style.display = 'none';
-  document.getElementById('error-msg').style.display  = 'none';
-  document.getElementById('loading').style.display    = 'none';
-  document.getElementById('results').style.display    = 'none';
-
-  if (id === 'results') {
-    document.getElementById('results').style.display = 'block';
-  } else if (id === 'loading') {
-    document.getElementById('loading').style.display = 'block';
-  }
+// ── UI helpers ─────────────────────────────────────────────────
+function showSec(id) {
+  ['drop-zone','loading','results'].forEach(s=>document.getElementById(s).style.display='none');
+  document.getElementById('error-msg').style.display='none';
+  if (id==='results') document.getElementById('results').style.display='block';
+  else if (id==='loading') document.getElementById('loading').style.display='block';
+  else document.getElementById('drop-zone').style.display='block';
+}
+function showErr(msg) {
+  document.getElementById('drop-zone').style.display='block';
+  const el=document.getElementById('error-msg'); el.style.display='block'; el.textContent='❌ '+msg;
+  document.getElementById('loading').style.display='none';
+  document.getElementById('results').style.display='none';
+}
+function resetAll() {
+  Object.assign(S,{files:[],allTrades:[],filteredTrades:[],viewMode:'merged',
+    filters:{dateStart:'',dateEnd:'',symbol:'all',comment:'all'},sort:{key:'closeTimeBJ',dir:'asc'},page:1});
+  document.getElementById('file-input').value='';
+  document.getElementById('view-merged').style.display='';
+  document.getElementById('view-compare').style.display='none';
+  document.getElementById('btn-merged').classList.add('active');
+  document.getElementById('btn-compare').classList.remove('active');
+  showSec('upload');
+}
+function stepOffset(d) {
+  const el=document.getElementById('tz-offset');
+  el.value=Math.max(-14,Math.min(14,(parseFloat(el.value)||0)+d));
+  updateHint();
+}
+function updateHint() {
+  const v=parseFloat(document.getElementById('tz-offset').value);
+  const h=document.getElementById('offset-hint');
+  h.textContent = isNaN(v)||v===0 ? '北京时间 = 平台时间（无偏移）' :
+                  v>0 ? `北京时间 = 平台时间 +${v} 小时` : `北京时间 = 平台时间 ${v} 小时`;
 }
 
-function showError(msg) {
-  document.getElementById('drop-zone').style.display = 'block';
-  document.getElementById('error-msg').style.display = 'block';
-  document.getElementById('error-msg').textContent = '❌ ' + msg;
-  document.getElementById('loading').style.display  = 'none';
-  document.getElementById('results').style.display  = 'none';
-}
-
-function resetUI() {
-  document.getElementById('drop-zone').style.display = 'block';
-  document.getElementById('results').style.display  = 'none';
-  document.getElementById('error-msg').style.display = 'none';
-  document.getElementById('file-input').value = '';
-}
-
-// ============================================================
-//  时区偏移输入交互
-// ============================================================
-function stepOffset(delta) {
-  const input = document.getElementById('tz-offset');
-  const cur = parseFloat(input.value) || 0;
-  const next = Math.max(-14, Math.min(14, cur + delta));
-  input.value = next;
-  updateOffsetHint();
-}
-
-function updateOffsetHint() {
-  const v = parseFloat(document.getElementById('tz-offset').value);
-  const hint = document.getElementById('offset-hint');
-  if (isNaN(v) || v === 0) {
-    hint.textContent = '北京时间 = 平台时间（无偏移）';
-  } else if (v > 0) {
-    hint.textContent = `北京时间 = 平台时间 +${v} 小时`;
-  } else {
-    hint.textContent = `北京时间 = 平台时间 ${v} 小时`;
-  }
-}
-
-// ============================================================
-//  事件绑定
-// ============================================================
-const dropZone  = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-
-dropZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  dropZone.classList.add('drag-over');
-});
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) processFile(file);
-});
-
-fileInput.addEventListener('change', (e) => {
-  if (e.target.files[0]) processFile(e.target.files[0]);
-});
-
-document.getElementById('reset-btn').addEventListener('click', resetUI);
-document.getElementById('tz-offset').addEventListener('input', updateOffsetHint);
+// ── Events ─────────────────────────────────────────────────────
+const dz=document.getElementById('drop-zone'), fi=document.getElementById('file-input');
+dz.addEventListener('dragover',  e=>{e.preventDefault();dz.classList.add('drag-over')});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files.length) processFiles(e.dataTransfer.files)});
+fi.addEventListener('change', e=>{if(e.target.files.length) processFiles(e.target.files)});
+document.getElementById('tz-offset').addEventListener('input', updateHint);
 </script>
-
 </body>
 </html>
