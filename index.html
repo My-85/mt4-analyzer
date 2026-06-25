@@ -3,30 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MT4 交易账单分析器 2.0</title>
+<title>MT4/MT5 交易账单分析器 3.0</title>
+<meta name="author" content="Qinyu Dong">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
   --accent:#4f8ef7; --green:#26a69a; --red:#ef5350;
-  --text:#e8eaf0; --muted:#8b90a8; --gold:#f5c842;
+  --text:#e8eaf0; --muted:#8b90a8; --gold:#f5c842; --orange:#ff9800;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:20px}
 
-/* header */
 header{text-align:center;margin-bottom:24px}
 header h1{font-size:26px;font-weight:700;color:var(--gold)}
 .vbadge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle}
 header p{color:var(--muted);margin-top:6px;font-size:13px}
 
 /* drop zone */
-#drop-zone{border:2px dashed var(--border);border-radius:16px;padding:44px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);max-width:680px;margin:0 auto 28px}
+#drop-zone{border:2px dashed var(--border);border-radius:16px;padding:44px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);max-width:760px;margin:0 auto 28px}
 #drop-zone.drag-over{border-color:var(--accent);background:#1a2240}
 #drop-zone .icon{font-size:42px;margin-bottom:12px}
 #drop-zone h2{font-size:17px;margin-bottom:6px}
 #drop-zone p{color:var(--muted);font-size:13px;margin-bottom:4px}
-.multi-hint{color:var(--accent) !important;font-size:12px !important;margin-bottom:18px !important}
+.multi-hint{color:var(--accent)!important;font-size:12px!important;margin-bottom:6px!important}
+.kline-hint{color:var(--orange)!important;font-size:12px!important;margin-bottom:18px!important}
 #file-input{display:none}
 .btn{display:inline-block;padding:9px 24px;background:var(--accent);color:#fff;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;border:none;transition:opacity .15s}
 .btn:hover{opacity:.85}
@@ -41,10 +43,15 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 .ohint{color:var(--accent);font-size:12px;width:100%;text-align:center}
 
 /* error / loading */
-#error-msg{display:none;background:#3a1520;border:1px solid var(--red);color:var(--red);border-radius:10px;padding:14px 20px;max-width:680px;margin:0 auto 20px;font-size:14px}
+#error-msg{display:none;background:#3a1520;border:1px solid var(--red);color:var(--red);border-radius:10px;padding:14px 20px;max-width:760px;margin:0 auto 20px;font-size:14px}
 #loading{display:none;text-align:center;padding:40px;color:var(--muted)}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* kline status badge */
+#kline-status{display:none;text-align:center;padding:8px 16px;margin:0 auto 16px;max-width:760px;border-radius:10px;font-size:13px}
+#kline-status.has-data{background:#1a3020;border:1px solid var(--green);color:var(--green);display:block}
+#kline-status.no-data{background:#1a1d27;border:1px solid var(--border);color:var(--muted);display:block}
 
 /* filter bar */
 #filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -57,7 +64,7 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 .freset{margin-left:auto;padding:5px 14px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:7px;font-size:12px;cursor:pointer;height:32px;transition:all .15s}
 .freset:hover{border-color:var(--red);color:var(--red)}
 
-/* view toggle bar */
+/* view toggle */
 #vtbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
 .ftags{display:flex;flex-wrap:wrap;gap:7px}
 .ftag{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--muted)}
@@ -68,6 +75,9 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 
 /* section title */
 .st{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.st .badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px;vertical-align:middle}
+.badge-kline{background:rgba(255,152,0,.2);color:var(--orange)}
+.badge-mt5{background:rgba(79,142,247,.2);color:var(--accent)}
 
 /* account banner */
 .abanner{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;margin-bottom:22px;display:flex;flex-wrap:wrap;gap:18px;align-items:center}
@@ -82,7 +92,7 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 .sc .slabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .sc .sval{font-size:19px;font-weight:700}
 .sc .ssub{font-size:11px;color:var(--muted);margin-top:3px}
-.pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--text)} .hi{color:var(--gold)}
+.pos{color:var(--green)} .neg{color:var(--red)} .neu{color:var(--text)} .hi{color:var(--gold)} .warn{color:var(--orange)}
 
 /* compare table */
 .cwrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-bottom:22px}
@@ -99,7 +109,7 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 .cw{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 8px 8px;margin-bottom:20px}
 
 /* trade table */
-.thr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.thr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:0;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .thr:hover .st{color:var(--accent)}
 .ticon{color:var(--muted);font-size:15px;transition:transform .2s}
 .ticon.open{transform:rotate(180deg)}
@@ -108,7 +118,7 @@ header p{color:var(--muted);margin-top:6px;font-size:13px}
 .tscroll{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
 table.tt{width:100%;border-collapse:collapse;font-size:13px}
 table.tt thead tr{background:var(--surface2)}
-table.tt thead th{padding:8px 11px;text-align:right;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:color .15s}
+table.tt thead th{padding:8px 11px;text-align:right;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;transition:color .15s}
 table.tt thead th:hover{color:var(--accent)}
 table.tt thead th:first-child{text-align:left}
 .sico{font-size:10px;margin-left:2px}
@@ -136,15 +146,16 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
 <body>
 
 <header>
-  <h1>📊 MT4 交易账单分析器 <span class="vbadge">2.0</span></h1>
-  <p>支持多文件合并分析 · 品种/策略筛选 · 合并与对比双视角 · 13 项专业绩效指标</p>
+  <h1>📊 交易账单分析器 <span class="vbadge">3.0</span></h1>
+  <p>支持 MT4/MT5 · HTML/XLSX/CSV · 多文件合并 · K线浮亏分析 · 12 项专业指标</p>
 </header>
 
 <div id="drop-zone">
   <div class="icon">📂</div>
-  <h2>拖拽账单文件到这里</h2>
-  <p>支持 MT4 / TradeMax 导出的 .htm / .html 格式</p>
-  <p class="multi-hint">✦ 支持同时拖入多个文件，合并分析或横向对比</p>
+  <h2>拖拽文件到这里</h2>
+  <p>交易账单：MT4/MT5 导出的 .htm / .html / .xlsx 格式</p>
+  <p class="kline-hint">📈 K线数据（可选）：M1 周期的 .csv 文件，可叠加浮亏分析</p>
+  <p class="multi-hint">✦ 支持同时拖入多个文件，自动识别类型并合并分析</p>
   <div class="offset-row">
     <label for="tz-offset">平台时间 → 北京时间，偏移小时数：</label>
     <div class="oiw">
@@ -154,16 +165,33 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
     </div>
     <span class="ohint" id="offset-hint">北京时间 = 平台时间 +5 小时</span>
   </div>
+  <div class="offset-row">
+    <label for="init-capital">起始本金（USD）：</label>
+    <input type="number" id="init-capital" value="0" min="0" step="100" placeholder="0"
+      style="width:120px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 9px;font-size:14px;font-weight:600;text-align:center;outline:none"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    <span class="ohint">留空或填 0 则不叠加本金</span>
+  </div>
   <label class="btn" for="file-input">选择文件（可多选）</label>
-  <input type="file" id="file-input" accept=".htm,.html" multiple>
+  <input type="file" id="file-input" accept=".htm,.html,.xlsx,.csv" multiple>
 </div>
 
 <div id="error-msg"></div>
-<div id="loading"><div class="spinner"></div><p>正在解析账单数据...</p></div>
+<div id="kline-status"></div>
+<div id="loading"><div class="spinner"></div><p>正在解析文件数据...</p></div>
 
 <div id="results" style="display:none">
 
   <!-- Filter Bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--muted)">
+      已加载 <strong style="color:var(--text)" id="total-trade-count">0</strong> 笔交易
+    </div>
+    <button onclick="resetAll()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:7px 18px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">↩ 返回导入界面</button>
+  </div>
+
   <div id="filter-bar">
     <div class="fg">
       <label>日期范围</label>
@@ -194,10 +222,22 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
   <!-- MERGED VIEW -->
   <div id="view-merged">
     <div class="abanner" id="abanner"></div>
-    <div class="st">📈 交易绩效统计</div>
+    <div class="st">📈 交易绩效统计 <span class="badge badge-mt5" id="fmt-badge" style="display:none"></span></div>
     <div class="sgrid" id="sgrid"></div>
-    <div class="st">💰 资金净值 / 累计收益曲线</div>
-    <div class="cw"><div id="c1" style="height:360px"></div></div>
+
+    <!-- K-line enhanced charts -->
+    <div class="st">💰 资金净值 / 累计收益曲线 <span class="badge badge-kline" id="kbadge-c1" style="display:none">含K线浮亏</span></div>
+    <div class="cw"><div id="c1" style="height:400px"></div></div>
+
+    <div id="kline-charts" style="display:none">
+      <div class="st">📉 账户浮亏/浮盈曲线 <span class="badge badge-kline">K线模拟</span></div>
+      <div class="cw"><div id="c-floating" style="height:400px"></div></div>
+      <div class="st">📊 每笔交易：持仓时间 × 最大浮亏/浮盈 <span class="badge badge-kline">K线回测</span></div>
+      <div class="cw"><div id="c-trade-fl" style="height:400px"></div></div>
+      <div class="st">📋 交易浮亏排名（最大浮亏 TOP20）</div>
+      <div class="cwrap" id="fl-table-wrap"></div>
+    </div>
+
     <div class="st">🎯 进场时机监控：开仓时间 × 单笔盈亏分布</div>
     <div class="cw"><div id="c2" style="height:360px"></div></div>
     <div class="st">📅 持仓甘特图 &nbsp;<span style="font-weight:400;color:var(--muted);font-size:12px">🟢 盈利 &nbsp;🔴 亏损 · 可叠加 K 线复盘</span></div>
@@ -236,6 +276,7 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
             <th onclick="setSort('closeTimeBJ')">平仓时间(北京)<span class="sico" id="si-closeTimeBJ"></span></th>
             <th>平仓价</th>
             <th onclick="setSort('holdingMin')">持仓时长<span class="sico" id="si-holdingMin"></span></th>
+            <th onclick="setSort('maxFloatingLoss')">最大浮亏<span class="sico" id="si-maxFloatingLoss"></span></th>
             <th>注释</th>
             <th onclick="setSort('netProfit')">盈亏(USD)<span class="sico" id="si-netProfit"></span></th>
           </tr></thead>
@@ -245,19 +286,54 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
       <div class="pag" id="pag"></div>
     </div>
   </div>
-
-  <button id="reset-btn" onclick="resetAll()">↩ 重新上传</button>
 </div>
 
-<script>
-// ── Constants ──────────────────────────────────────────────────
-const FILE_COLORS = ['#4f8ef7','#f5c842','#26a69a','#ef5350','#ab47bc','#26c6da','#ff7043','#9ccc65'];
+<footer style="text-align:center;padding:24px 20px 16px;color:var(--muted);font-size:11px">
+  <p>Copyright &copy; 2026 Qinyu Dong</p>
+</footer>
 
-// ── State ──────────────────────────────────────────────────────
+<script>
+/*!
+ * MT4/MT5 Trading Statement Analyzer v3.0
+ * Copyright (C) 2026 Qinyu Dong. All rights reserved.
+ * This source code is protected under copyright law.
+ * Unauthorized reproduction or distribution is prohibited.
+ */
+(function() {
+  'use strict';
+  // Code-level copyright mark — do not remove
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, '__cp_author', {
+      value: 'Qinyu Dong 2026',
+      writable: false, configurable: false
+    });
+  }
+  // Console attribution
+  if (typeof console !== 'undefined') {
+    console.log('%c MT4/MT5 Analyzer v3.0 %c (c) 2026 Qinyu Dong ',
+      'color:#f5c842;font-weight:bold;', 'color:#8b90a8;');
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════
+// Constants & State
+// ══════════════════════════════════════════════════════════════
+const FILE_COLORS = ['#4f8ef7','#f5c842','#26a69a','#ef5350','#ab47bc','#26c6da','#ff7043','#9ccc65'];
+const PLY_BASE = {
+  paper_bgcolor:'transparent', plot_bgcolor:'#161929',
+  font:{color:'#e8eaf0',family:'Segoe UI,system-ui,sans-serif',size:12},
+  xaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
+  yaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
+  margin:{l:60,r:20,t:40,b:60}, hovermode:'closest',
+  legend:{bgcolor:'transparent',bordercolor:'#2e3250'},
+};
+
 const S = {
-  files: [],          // [{fileName, initialBalance, accountInfo, trades[]}]
-  allTrades: [],
+  files: [],          // [{fileName, fileType, accountInfo, trades[]}]
+  allTrades: [],      // unified trade objects
   filteredTrades: [],
+  bars: null,         // K-line data: {symbol, period, bars:[{time,open,high,low,close}]}
+  hasKline: false,
   viewMode: 'merged',
   filters: { dateStart:'', dateEnd:'', symbol:'all', comment:'all' },
   sort: { key:'closeTimeBJ', dir:'asc' },
@@ -265,21 +341,25 @@ const S = {
   pageSize: 20,
 };
 
-// ── Utils ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Utility Functions
+// ══════════════════════════════════════════════════════════════
 const getBJms  = () => (parseFloat(document.getElementById('tz-offset').value) || 5) * 3600000;
+const getInitCapital = () => { var el = document.getElementById('init-capital'); return el ? (parseFloat(el.value) || 0) : 0; };
 const fmtDT    = d => d ? d.toISOString().replace('T',' ').slice(0,19) : '-';
 const fmtDate  = d => d ? d.toISOString().slice(0,10) : '';
 const fmtN     = (n,d=2) => (n>=0?'+':'')+n.toFixed(d);
 const nCls     = n => n>0?'pos':n<0?'neg':'neu';
-const pNum     = s => parseFloat(String(s).replace(/\s/g,'').replace(',','.')) || 0;
-const holdFmt  = m => m>=60?(m/60).toFixed(1)+'h':m+'min';
+const pNum     = s => { if (typeof s === 'number') return s; const v = parseFloat(String(s).replace(/\s/g,'').replace(',','.')); return isNaN(v)?0:v; };
+const holdFmt  = m => m>=1440?(m/1440).toFixed(1)+'d':m>=60?(m/60).toFixed(1)+'h':m+'min';
 
-function parseMT4Date(str) {
-  const m = str.trim().match(/^(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+function parseDate(str) {
+  // Supports: "2026.03.09 17:59:47" or "2026.06.16 20:02:02"
+  const m = String(str).trim().match(/^(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
   return m ? new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6])) : null;
 }
 
-function extractComment(title) {
+function extractCommentMT4(title) {
   if (!title) return '';
   const m = title.match(/^#\d+\s+(.+)$/);
   if (!m) return '';
@@ -293,7 +373,25 @@ function withCum(trades) {
   return s.map(t => ({ ...t, cumulativeProfit: (c += t.netProfit) }));
 }
 
-// ── Parse MT4 HTML ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Encoding Detection
+// ══════════════════════════════════════════════════════════════
+function detectEncoding(buffer) {
+  const arr = new Uint8Array(buffer);
+  if (arr.length >= 2 && arr[0] === 0xFF && arr[1] === 0xFE) return 'utf-16le';
+  if (arr.length >= 2 && arr[0] === 0xFE && arr[1] === 0xFF) return 'utf-16be';
+  if (arr.length >= 3 && arr[0] === 0xEF && arr[1] === 0xBB && arr[2] === 0xBF) return 'utf-8-bom';
+  return 'utf-8';
+}
+
+function decodeText(buffer, encoding) {
+  const decoder = new TextDecoder(encoding === 'utf-8-bom' ? 'utf-8' : encoding);
+  return decoder.decode(buffer);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MT4 HTML Parser (kept for backward compatibility)
+// ══════════════════════════════════════════════════════════════
 function parseMT4(html, fileName) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const bt  = doc.body?.innerText || '';
@@ -314,7 +412,7 @@ function parseMT4(html, fileName) {
     }
     if (mainTable) break;
   }
-  if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格，请确认是 MT4 导出的账单文件。`);
+  if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格，请确认是 MT4/MT5 导出的账单文件。`);
 
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
@@ -332,56 +430,574 @@ function parseMT4(html, fileName) {
 
     if (!['buy','sell'].includes(type) || !/^\d+$/.test(ticket)) continue;
 
-    const openUTC  = parseMT4Date(c[1].textContent);
-    const closeUTC = parseMT4Date(c[8].textContent);
+    const openUTC  = parseDate(c[1].textContent);
+    const closeUTC = parseDate(c[8].textContent);
     if (!openUTC || !closeUTC) continue;
 
     const openTimeBJ  = new Date(openUTC.getTime()  + bjMs);
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
+    const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
+    const closeTimeRaw = new Date(closeUTC.getTime());
     const profit      = pNum(c[13].textContent);
     const commission  = pNum(c[10].textContent);
     const swap        = pNum(c[12].textContent);
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
-    const comment     = extractComment(c[0].getAttribute('title'));
+    const comment     = extractCommentMT4(c[0].getAttribute('title'));
     const h = openTimeBJ.getUTCHours();
     const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
 
-    trades.push({ ticket, openTimeBJ, closeTimeBJ, type,
+    trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
       size: pNum(c[3].textContent), item: c[4].textContent.trim().toUpperCase(),
       openPrice: pNum(c[5].textContent), closePrice: pNum(c[9].textContent),
       profit, commission, swap, netProfit, holdingMin,
-      comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0 });
+      comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
+      maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
   }
 
   if (!trades.length) throw new Error(`"${fileName}" 中没有找到已平仓的 buy/sell 记录。`);
-  return { accountInfo, trades, initialBalance, fileName };
+  return { accountInfo, trades, initialBalance, fileName, fileType: 'MT4 HTML' };
 }
 
-// ── Load files ─────────────────────────────────────────────────
-function processFiles(files) {
+// ══════════════════════════════════════════════════════════════
+// MT5 HTML Parser (UTF-16LE encoded, different column order)
+// ══════════════════════════════════════════════════════════════
+function parseMT5HTML(html, fileName) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const text = doc.body?.innerText || '';
+
+  // Extract account info
+  const accountInfo = {
+    account:  (text.match(/账号[：:]\s*(\d+)/)||text.match(/Account[：:]\s*(\d+)/)||['','?'])[1].trim(),
+    name:     (text.match(/姓名[：:]\s*([^\n]+)/)||text.match(/Name[：:]\s*([^\n]+)/)||['','?'])[1].trim(),
+    currency: (text.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
+  };
+
+  // Find table with trade data
+  // MT5 HTML uses Chinese headers: 时间, 持仓, 交易品种, 类型, 成交量, 价位...
+  let mainTable = null, headerRowIdx = -1, isMT5 = false;
+  for (const tbl of doc.querySelectorAll('table')) {
+    const rows = tbl.querySelectorAll('tr');
+    for (let i = 0; i < rows.length; i++) {
+      const cells = rows[i].querySelectorAll('td,th');
+      const cellTexts = Array.from(cells).map(c => c.textContent.trim());
+      const joined = cellTexts.join('|');
+      // MT5 HTML header detection
+      if (cellTexts.includes('时间') && cellTexts.includes('持仓') && cellTexts.includes('交易品种')) {
+        mainTable = tbl; headerRowIdx = i; isMT5 = true; break;
+      }
+      // MT4 HTML header detection (fallback)
+      if (cellTexts.length && cellTexts[0].toLowerCase() === 'ticket') {
+        mainTable = tbl; headerRowIdx = i; isMT5 = false; break;
+      }
+    }
+    if (mainTable) break;
+  }
+
+  if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格。`);
+
+  // If detected as MT4 format, delegate
+  if (!isMT5) return parseMT4(html, fileName);
+
+  const rows = mainTable.querySelectorAll('tr');
+  const trades = [];
+  let initialBalance = 0;
+  const bjMs = getBJms();
+
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
+    const c = rows[i].querySelectorAll('td');
+    if (c.length < 10) continue;
+
+    const vals = Array.from(c).map(x => x.textContent.trim());
+
+    // MT5 HTML data columns (12 cols):
+    // 0:OpenTime, 1:Ticket, 2:Symbol, 3:Type, 4:Comment, 5:Size, 6:OpenPrice
+    // 7:CloseTime, 8:ClosePrice, 9:Commission, 10:Swap, 11:Profit
+    if (vals.length < 12) continue;
+    // Skip header or summary rows
+    const type = vals[3].toLowerCase();
+    if (!['buy','sell'].includes(type)) continue;
+
+    const ticket = vals[1];
+    if (!/^\d+$/.test(ticket)) continue;
+
+    const openUTC  = parseDate(vals[0]);
+    const closeUTC = parseDate(vals[7]);
+    if (!openUTC || !closeUTC) continue;
+
+    const openTimeBJ  = new Date(openUTC.getTime()  + bjMs);
+    const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
+    const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
+    const closeTimeRaw = new Date(closeUTC.getTime());
+    const profit      = pNum(vals[11]);
+    const commission  = pNum(vals[9]);
+    const swap        = pNum(vals[10]);
+    const netProfit   = profit + commission + swap;
+    const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
+    const comment     = vals[4] && vals[4] !== '' ? vals[4] : '';
+    const h = openTimeBJ.getUTCHours();
+    const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
+
+    trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
+      size: pNum(vals[5]), item: vals[2].toUpperCase(),
+      openPrice: pNum(vals[6]), closePrice: pNum(vals[8]),
+      profit, commission, swap, netProfit, holdingMin,
+      comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
+      maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
+  }
+
+  if (!trades.length) throw new Error(`"${fileName}" 中没有找到已平仓的 buy/sell 记录。`);
+  return { accountInfo, trades, initialBalance, fileName, fileType: 'MT5 HTML' };
+}
+
+// ══════════════════════════════════════════════════════════════
+// MT5 XLSX Parser (via SheetJS)
+// ══════════════════════════════════════════════════════════════
+function parseMT5XLSX(buffer, fileName) {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const wsname = wb.SheetNames[0];
+  const ws = wb.Sheets[wsname];
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+  if (!data || data.length < 8) throw new Error(`"${fileName}" 数据行数不足，请确认是 MT5 导出的 xlsx 文件。`);
+
+  // Find header row: should contain '时间', '持仓', '交易品种'
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(data.length, 20); i++) {
+    const row = data[i];
+    if (!row || !Array.isArray(row)) continue;
+    const str = row.map(c => String(c || '')).join(' ');
+    if (str.includes('时间') && str.includes('持仓') && str.includes('交易品种')) {
+      headerRow = i; break;
+    }
+  }
+
+  if (headerRow < 0) throw new Error(`"${fileName}" 未找到 MT5 表头，请确认文件格式。`);
+
+  // Extract account info from rows before header
+  const allText = data.slice(0, headerRow).flat().map(c => String(c || '')).join('\n');
+  const accountInfo = {
+    account:  (allText.match(/账户[：:]\s*(\d+)/)||allText.match(/Account[：:]\s*(\d+)/)||['','?'])[1].trim(),
+    name:     (allText.match(/姓名[：:]\s*([^\n]+)/)||allText.match(/Name[：:]\s*([^\n]+)/)||['','?'])[1].trim(),
+    currency: (allText.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
+  };
+
+  const trades = [];
+  let initialBalance = 0;
+  const bjMs = getBJms();
+
+  // MT5 XLSX columns (13 cols):
+  // 0:OpenTime, 1:Ticket, 2:Symbol, 3:Type, 4:Size, 5:OpenPrice,
+  // 6:S/L, 7:T/P, 8:CloseTime, 9:ClosePrice, 10:Commission, 11:Swap, 12:Profit
+  for (let i = headerRow + 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row || !Array.isArray(row) || row.length < 13) continue;
+
+    const type = String(row[3] || '').toLowerCase().trim();
+    if (!['buy','sell'].includes(type)) continue;
+
+    const ticket = String(row[1] || '').trim();
+    if (!/^\d+$/.test(ticket)) continue;
+
+    const openUTC  = parseDate(row[0]);
+    const closeUTC = parseDate(row[8]);
+    if (!openUTC || !closeUTC) continue;
+
+    const openTimeBJ  = new Date(openUTC.getTime()  + bjMs);
+    const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
+    const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
+    const closeTimeRaw = new Date(closeUTC.getTime());
+    const profit      = pNum(row[12]);
+    const commission  = pNum(row[10]);
+    const swap        = pNum(row[11]);
+    const netProfit   = profit + commission + swap;
+    const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
+    const comment     = '';
+    const h = openTimeBJ.getUTCHours();
+    const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
+
+    const sizeRaw = String(row[4] || '0').trim();
+    // Handle partial fills like "0.01 / 0.01"
+    const sizeNum = pNum(sizeRaw.includes('/') ? sizeRaw.split('/')[0] : sizeRaw);
+
+    trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
+      size: sizeNum, item: String(row[2] || '').toUpperCase().trim(),
+      openPrice: pNum(row[5]), closePrice: pNum(row[9]),
+      profit, commission, swap, netProfit, holdingMin,
+      comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
+      maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
+  }
+
+  if (!trades.length) throw new Error(`"${fileName}" 中没有找到已平仓的 buy/sell 记录。`);
+  return { accountInfo, trades, initialBalance, fileName, fileType: 'MT5 XLSX' };
+}
+
+// ══════════════════════════════════════════════════════════════
+// K-line CSV Parser
+// ══════════════════════════════════════════════════════════════
+function parseKlineCSV(text, fileName) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error(`"${fileName}" CSV 数据不足。`);
+
+  // Detect delimiter and header
+  const header = lines[0].toLowerCase();
+  const delim = header.includes(';') ? ';' : ',';
+
+  const cols = header.split(delim).map(c => c.trim().replace(/"/g,''));
+  const idx = {
+    time: cols.findIndex(c => c === 'time' || c === 'datetime' || c === 'date'),
+    open: cols.findIndex(c => c === 'open'),
+    high: cols.findIndex(c => c === 'high'),
+    low: cols.findIndex(c => c === 'low'),
+    close: cols.findIndex(c => c === 'close'),
+  };
+
+  if (idx.time < 0 || idx.open < 0 || idx.high < 0 || idx.low < 0 || idx.close < 0) {
+    throw new Error(`"${fileName}" CSV 缺少必需列 (time, open, high, low, close)。找到: ${cols.join(', ')}`);
+  }
+
+  const bars = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(delim).map(c => c.trim().replace(/"/g,''));
+    const d = parseDate(parts[idx.time]);
+    if (!d || isNaN(d.getTime())) continue;
+    bars.push({
+      time: d,
+      open:  parseFloat(parts[idx.open]),
+      high:  parseFloat(parts[idx.high]),
+      low:   parseFloat(parts[idx.low]),
+      close: parseFloat(parts[idx.close]),
+    });
+  }
+
+  if (bars.length < 2) throw new Error(`"${fileName}" 解析后无有效K线数据。`);
+
+  // Sort by time
+  bars.sort((a, b) => a.time - b.time);
+
+  // Extract symbol from filename or data
+  let symbol = '';
+  const symMatch = fileName.match(/([A-Z]{3,6})/i);
+  if (symMatch) symbol = symMatch[1].toUpperCase();
+
+  const timeSpan = bars[bars.length-1].time - bars[0].time;
+  const period = timeSpan / bars.length < 65000 ? 'M1' :
+                 timeSpan / bars.length < 310000 ? 'M5' : 'H1';
+
+  return { symbol, period, bars, fileName, barCount: bars.length };
+}
+
+// ══════════════════════════════════════════════════════════════
+// Floating P&L Calculation Engine
+// ══════════════════════════════════════════════════════════════
+
+// For a single trade, compute max floating loss/profit from K-line bars
+function computeTradeFloating(trade, bars) {
+  if (!bars || !bars.length) return trade;
+
+  // Use raw platform times for K-line matching (bars are in platform time)
+  const openT = (trade.openTimeRaw || trade.openTimeBJ).getTime();
+  const closeT = (trade.closeTimeRaw || trade.closeTimeBJ).getTime();
+
+  // Binary search to find start/end indices in bars
+  let lo = 0, hi = bars.length - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (bars[mid].time.getTime() < openT) lo = mid + 1; else hi = mid; }
+  const startIdx = lo;
+
+  lo = 0; hi = bars.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (bars[mid].time.getTime() > closeT) hi = mid - 1; else lo = mid; }
+  const endIdx = lo;
+
+  if (startIdx > endIdx || startIdx >= bars.length) return trade;
+
+  const isBuy = trade.type === 'buy';
+  const openPrice = trade.openPrice;
+  const size = trade.size;
+
+  // Use the shared point value function for consistency
+  const pointValue = getPointValue(trade);
+
+  let maxFLoss = 0;   // maximum floating loss (positive number in USD)
+  let maxFProfit = 0; // maximum floating profit (positive number in USD)
+  let maxFLossPct = 0;
+
+  for (let i = startIdx; i <= endIdx && i < bars.length; i++) {
+    const bar = bars[i];
+    let unrealizedPL;
+    if (isBuy) {
+      unrealizedPL = (bar.low - openPrice) * pointValue;  // worst case this bar
+      const bestPL = (bar.high - openPrice) * pointValue;
+      if (bestPL > maxFProfit) maxFProfit = bestPL;
+      if (unrealizedPL < -maxFLoss) maxFLoss = -unrealizedPL; // store as positive
+    } else {
+      unrealizedPL = (openPrice - bar.high) * pointValue; // worst case
+      const bestPL = (openPrice - bar.low) * pointValue;
+      if (bestPL > maxFProfit) maxFProfit = bestPL;
+      if (unrealizedPL < -maxFLoss) maxFLoss = -unrealizedPL;
+    }
+  }
+
+  // Percentage relative to open price
+  if (openPrice > 0) {
+    maxFLossPct = (maxFLoss / pointValue) / openPrice * 100;
+  }
+
+  return {
+    ...trade,
+    maxFloatingLoss: maxFLoss,
+    maxFloatingProfit: maxFProfit,
+    maxFloatingLossPct: maxFLossPct,
+  };
+}
+
+// Compute account-level equity curve (simplified, robust approach)
+// Walk through time at 5-min intervals, compute open positions' unrealized P&L at each step
+function computeEquityCurve(trades, bars) {
+  if (!bars || !bars.length || !trades.length) return null;
+
+  // Sort bars by time (should already be sorted)
+  var sortedBars = bars;
+  var barTimes = sortedBars.map(function(b) { return b.time.getTime(); });
+
+  // Use raw platform times for matching
+  var getRawOpen = function(t) { return (t.openTimeRaw || t.openTimeBJ).getTime(); };
+  var getRawClose = function(t) { return (t.closeTimeRaw || t.closeTimeBJ).getTime(); };
+
+  // Sort trades by open time
+  var sortedTrades = trades.slice().sort(function(a, b) { return getRawOpen(a) - getRawOpen(b); });
+
+  // Time range
+  var tMin = Infinity, tMax = -Infinity;
+  sortedTrades.forEach(function(t) {
+    var o = getRawOpen(t), c = getRawClose(t);
+    if (o < tMin) tMin = o;
+    if (c > tMax) tMax = c;
+  });
+  if (!isFinite(tMin) || !isFinite(tMax)) return null;
+
+  // Sample every 5 minutes for performance
+  var STEP_MS = 5 * 60000;
+  var bjMs = getBJms();
+
+  var nSamples = Math.min(Math.ceil((tMax - tMin) / STEP_MS), 2000);
+  var stepMs = Math.max(STEP_MS, Math.ceil((tMax - tMin) / nSamples));
+
+  // Build a price lookup: for each sample time, find the nearest bar's close price
+  function findPriceAt(targetMs) {
+    // Binary search for closest bar
+    var lo = 0, hi = barTimes.length - 1;
+    if (targetMs <= barTimes[0]) return sortedBars[0].close;
+    if (targetMs >= barTimes[hi]) return sortedBars[hi].close;
+    while (lo < hi - 1) {
+      var mid = (lo + hi) >> 1;
+      if (barTimes[mid] <= targetMs) lo = mid; else hi = mid;
+    }
+    return sortedBars[lo].close;
+  }
+
+  var initCapital = getInitCapital();
+  var samples = [];
+  var peakEquity = initCapital;
+  var maxDrawdown = 0;
+
+  for (var ts = tMin; ts <= tMax; ts += stepMs) {
+    var price = findPriceAt(ts);
+
+    // Determine which trades are open at this time
+    var realizedProfit = 0;
+    var unrealizedPL = 0;
+    var openCount = 0;
+
+    for (var i = 0; i < sortedTrades.length; i++) {
+      var tr = sortedTrades[i];
+      var ot = getRawOpen(tr);
+      var ct = getRawClose(tr);
+
+      if (ct <= ts) {
+        // Trade closed before or at this time
+        realizedProfit += tr.netProfit;
+      } else if (ot <= ts && ct > ts) {
+        // Trade is currently open
+        openCount++;
+        var pv = getPointValue(tr);
+        if (tr.type === 'buy') {
+          unrealizedPL += (price - tr.openPrice) * pv;
+        } else {
+          unrealizedPL += (tr.openPrice - price) * pv;
+        }
+      }
+      // else: trade hasn't opened yet, skip
+    }
+
+    var equity = initCapital + realizedProfit + unrealizedPL;
+    if (equity > peakEquity) peakEquity = equity;
+    var dd = peakEquity - equity;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+
+    samples.push({
+      time: new Date(ts + bjMs),
+      equity: equity,
+      balance: initCapital + realizedProfit,
+      unrealizedPL: unrealizedPL,
+      drawdown: dd,
+      openCount: openCount
+    });
+  }
+
+  return {
+    samples: samples,
+    maxDrawdown: maxDrawdown,
+    peakEquity: peakEquity === -Infinity ? 0 : peakEquity
+  };
+}
+
+function getPointValue(trade) {
+  const priceDiff = Math.abs(trade.closePrice - trade.openPrice);
+  const defaultPV = trade.size * 100; // XAUUSD: 1 lot = $100/point
+  if (priceDiff > 0.0001) {
+    const iv = Math.abs(trade.profit) / priceDiff;
+    // Sanity cap: point value should not exceed 5x the default
+    if (iv > 0 && isFinite(iv) && iv <= defaultPV * 5) return iv;
+  }
+  return defaultPV;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Master File Processor
+// ══════════════════════════════════════════════════════════════
+async function processFiles(files) {
   if (!files?.length) return;
   showSec('loading');
-  Promise.all(Array.from(files).map(f =>
-    new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = e => { try { res(parseMT4(e.target.result, f.name)); } catch(err) { rej(err); } };
-      r.onerror = () => rej(new Error(`读取 "${f.name}" 失败`));
-      r.readAsText(f, 'utf-8');
-    })
-  )).then(results => {
-    S.files = results;
-    S.allTrades = results.flatMap((r, idx) => r.trades.map(t => ({ ...t, sourceIndex: idx })));
-    S.allTrades.sort((a,b) => a.closeTimeBJ - b.closeTimeBJ);
-    populateFilters();
-    setDateDefaults();
-    applyFilters();
-    renderAll();
-    showSec('results');
-  }).catch(err => showErr(err.message || String(err)));
+
+  const statementFiles = [];
+  let klineFile = null;
+  const errors = [];
+
+  // Categorize files
+  for (const f of Array.from(files)) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (ext === 'csv') {
+      klineFile = f;
+    } else if (['htm', 'html', 'xlsx'].includes(ext)) {
+      statementFiles.push(f);
+    }
+  }
+
+  if (!statementFiles.length) {
+    showErr('未找到交易账单文件（.htm / .html / .xlsx）。');
+    return;
+  }
+
+  // Parse statement files
+  const parsedStatements = [];
+  for (const f of statementFiles) {
+    try {
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (ext === 'xlsx') {
+        const buf = await f.arrayBuffer();
+        const result = parseMT5XLSX(buf, f.name);
+        parsedStatements.push(result);
+      } else {
+        // HTML: detect encoding first
+        const buf = await f.arrayBuffer();
+        const enc = detectEncoding(buf);
+        const text = decodeText(buf, enc);
+
+        // Try MT5 parser first (handles UTF-16LE Chinese headers), fallback to MT4
+        let result;
+        try {
+          result = parseMT5HTML(text, f.name);
+        } catch (e) {
+          result = parseMT4(text, f.name);
+        }
+        parsedStatements.push(result);
+      }
+    } catch (err) {
+      errors.push(`${f.name}: ${err.message || err}`);
+    }
+  }
+
+  if (errors.length) {
+    showErr(errors.join('\n'));
+    return;
+  }
+
+  if (!parsedStatements.length) {
+    showErr('所有账单文件解析失败。');
+    return;
+  }
+
+  // Merge trades
+  S.files = parsedStatements;
+  S.allTrades = parsedStatements.flatMap((r, idx) =>
+    r.trades.map(t => ({ ...t, sourceIndex: idx }))
+  );
+  S.allTrades.sort((a, b) => a.closeTimeBJ - b.closeTimeBJ);
+
+  // Parse K-line file if present
+  S.bars = null;
+  S.hasKline = false;
+  S.klineInfo = null;
+  if (klineFile) {
+    try {
+      const text = await klineFile.text();
+      const klineResult = parseKlineCSV(text, klineFile.name);
+      S.bars = klineResult.bars;
+      S.klineInfo = { symbol: klineResult.symbol, period: klineResult.period, barCount: klineResult.barCount };
+      S.hasKline = true;
+
+      // Compute floating P&L for each trade
+      S.allTrades = S.allTrades.map(t => computeTradeFloating(t, S.bars));
+
+      // Update trade data in S.files too
+      for (let i = 0; i < S.files.length; i++) {
+        const fileIdx = i;
+        S.files[i].trades = S.allTrades.filter(t => t.sourceIndex === fileIdx);
+      }
+    } catch (err) {
+      console.warn('K-line parsing failed:', err);
+      S.bars = null;
+      S.hasKline = false;
+    }
+  }
+
+  // Update file type badges
+  updateFormatBadge();
+
+  populateFilters();
+  setDateDefaults();
+  applyFilters();
+  renderAll();
+  showSec('results');
 }
 
-// ── Filters ────────────────────────────────────────────────────
+function updateFormatBadge() {
+  const types = [...new Set(S.files.map(f => f.fileType))];
+  const badge = document.getElementById('fmt-badge');
+  if (types.length) {
+    badge.style.display = 'inline-block';
+    badge.textContent = types.join(' + ');
+  }
+
+  // K-line status
+  const kstatus = document.getElementById('kline-status');
+  if (S.hasKline && S.bars) {
+    kstatus.className = 'has-data';
+    kstatus.innerHTML = `✅ K线数据已加载：${S.klineInfo.barCount} 根 ${S.klineInfo.period} 柱 (${S.klineInfo.symbol || '未知品种'}) · 已计算每笔浮亏/浮盈 · 已生成账户浮亏曲线`;
+    document.getElementById('kbadge-c1').style.display = 'inline-block';
+    document.getElementById('kline-charts').style.display = '';
+  } else {
+    kstatus.className = 'no-data';
+    kstatus.innerHTML = '💡 提示：同时上传 K 线 CSV 文件（M1 周期）可开启浮亏分析和资金曲线增强功能';
+    kstatus.style.display = 'block';
+    document.getElementById('kbadge-c1').style.display = 'none';
+    document.getElementById('kline-charts').style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Filters
+// ══════════════════════════════════════════════════════════════
 function populateFilters() {
   const symbols  = [...new Set(S.allTrades.map(t => t.item))].sort();
   const comments = [...new Set(S.allTrades.map(t => t.comment).filter(Boolean))].sort();
@@ -429,7 +1045,9 @@ function resetFilters() {
   applyFilters(); renderAll();
 }
 
-// ── Stats ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Statistics Calculation
+// ══════════════════════════════════════════════════════════════
 function calcStats(trades, ib) {
   const n = trades.length; if (!n) return null;
   const wins   = trades.filter(t => t.netProfit > 0);
@@ -467,11 +1085,20 @@ function calcStats(trades, ib) {
   const bwr = buys.length  ? buys.filter(t=>t.netProfit>0).length /buys.length *100  : null;
   const swr = sells.length ? sells.filter(t=>t.netProfit>0).length/sells.length*100 : null;
 
+  // Floating P&L stats (if K-line available)
+  const flTrades = trades.filter(t => t.maxFloatingLoss !== null && t.maxFloatingLoss > 0);
+  const avgMaxFL = flTrades.length ? flTrades.reduce((s,t) => s + t.maxFloatingLoss, 0) / flTrades.length : 0;
+  const worstFL  = flTrades.length ? Math.max(...flTrades.map(t => t.maxFloatingLoss)) : 0;
+  const avgMaxFP = flTrades.length ? flTrades.reduce((s,t) => s + t.maxFloatingProfit, 0) / flTrades.length : 0;
+
   return { n, wins:wins.length, losses:losses.length, wr, tp, mxW, mxL, aW, aL, pf, aH, exp,
-           items, maxDD, maxDDPct, mCW, mCL, bwr, swr, bN:buys.length, sN:sells.length };
+           items, maxDD, maxDDPct, mCW, mCL, bwr, swr, bN:buys.length, sN:sells.length,
+           avgMaxFL, worstFL, avgMaxFP, flCount: flTrades.length };
 }
 
-// ── Render dispatcher ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Render Dispatcher
+// ══════════════════════════════════════════════════════════════
 function renderAll() {
   renderFileTags();
   if (S.viewMode === 'merged') renderMerged();
@@ -481,11 +1108,15 @@ function renderAll() {
 
 function renderFileTags() {
   document.getElementById('file-tags').innerHTML = S.files.map((f,i) =>
-    `<div class="ftag"><span class="fdot" style="background:${FILE_COLORS[i%8]}"></span>${f.fileName}</div>`
-  ).join('');
+    `<div class="ftag"><span class="fdot" style="background:${FILE_COLORS[i%8]}"></span>${f.fileName} <span style="opacity:.5;font-size:10px">${f.fileType||''}</span></div>`
+  ).join('') + (S.hasKline ? `<div class="ftag"><span class="fdot" style="background:var(--orange)"></span>📈 K线数据</div>` : '');
+  var tcEl = document.getElementById('total-trade-count');
+  if (tcEl) tcEl.textContent = S.filteredTrades.length;
 }
 
-// ── Merged view ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Merged View
+// ══════════════════════════════════════════════════════════════
 function renderMerged() {
   const ft  = S.filteredTrades; if (!ft.length) return;
   const ftc = withCum(ft);
@@ -500,11 +1131,15 @@ function renderMerged() {
   ).join('');
   document.getElementById('abanner').innerHTML = ab +
     `<div class="ai"><span class="alabel">筛选笔数</span><span class="aval hi">${ft.length} 笔</span></div>
-     <div class="ai"><span class="alabel">品种</span><span class="aval">${st.items.join(', ')}</span></div>`;
+     <div class="ai"><span class="alabel">品种</span><span class="aval">${st.items.join(', ')}</span></div>` +
+    (S.hasKline ? `<div class="ai"><span class="alabel">K线浮亏分析</span><span class="aval" style="color:var(--orange)">✓ 已启用</span></div>` : '');
 
   renderStats(st);
-  plotC1Merged(ftc);
-  plotC2Merged(ft);
+  plotEquityCurve(ftc);
+  if (S.hasKline) plotFloatingCurve(ft);
+  if (S.hasKline) plotTradeFloating(ft);
+  if (S.hasKline) renderFLTable(ft);
+  plotEntryTiming(ft);
   plotGantt(ft, 'c3', false);
 }
 
@@ -528,55 +1163,92 @@ function renderStats(s) {
     { l:'最大单笔亏', v:`${s.mxL.toFixed(2)} USD`,  sub:'', c:'neg' },
     { l:'平均持仓',   v:holdFmt(s.aH),           sub:'', c:'neu' },
   ];
+
+  // Add floating P&L cards if K-line available
+  if (S.hasKline && s.flCount > 0) {
+    cards.push(
+      { l:'平均最大浮亏', v:`-${s.avgMaxFL.toFixed(2)} USD`, sub:`${s.flCount} 笔有K线数据`, c:'warn' },
+      { l:'最大单笔浮亏', v:`-${s.worstFL.toFixed(2)} USD`, sub:'持仓期间最大回撤', c:'neg' },
+      { l:'平均最大浮盈', v:`+${s.avgMaxFP.toFixed(2)} USD`, sub:'持仓期间最大浮盈', c:'pos' },
+    );
+  }
+
   document.getElementById('sgrid').innerHTML = cards.map(c =>
     `<div class="sc"><div class="slabel">${c.l}</div><div class="sval ${c.c}">${c.v}</div>${c.sub?`<div class="ssub">${c.sub}</div>`:''}</div>`
   ).join('');
 }
 
-// ── Plotly base ────────────────────────────────────────────────
-const PLY = {
-  paper_bgcolor:'transparent', plot_bgcolor:'#161929',
-  font:{color:'#e8eaf0',family:'Segoe UI,system-ui,sans-serif',size:12},
-  xaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
-  yaxis:{gridcolor:'#1e2235',linecolor:'#2e3250',tickfont:{size:11}},
-  margin:{l:60,r:20,t:40,b:60}, hovermode:'closest',
-  legend:{bgcolor:'transparent',bordercolor:'#2e3250'},
-};
-
-function plotC1Merged(ftc) {
-  const x=ftc.map(t=>t.closeTimeBJ), y=ftc.map(t=>t.cumulativeProfit);
+// ══════════════════════════════════════════════════════════════
+// Charts
+// ══════════════════════════════════════════════════════════════
+function plotEquityCurve(ftc) {
+  const initCap = getInitCapital();
+  const x=ftc.map(t=>t.closeTimeBJ), y=ftc.map(t=>initCap + t.cumulativeProfit);
   const fp=y.length?y[y.length-1]:0, lc=fp>=0?'#26a69a':'#ef5350';
-  Plotly.newPlot('c1',[{
+  const traces = [{
     x,y,type:'scatter',mode:'lines+markers',
     line:{color:lc,width:2.5},marker:{size:5,color:lc},
     fill:'tozeroy',fillcolor:fp>=0?'rgba(38,166,154,.1)':'rgba(239,83,80,.1)',
-    text:ftc.map(t=>`<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} USD<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
+    text:ftc.map(t => `<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} USD<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
     hoverinfo:'text',name:'累计净利润',
-  }],{...PLY,
-    title:{text:'策略资金净值 / 累计收益曲线',font:{size:14}},
-    shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:0,y1:0,line:{color:'#8b90a8',width:1,dash:'dash'}}],
-    xaxis:{...PLY.xaxis,title:'平仓时间（北京）'},
-    yaxis:{...PLY.yaxis,title:'累计净利润（USD）'},
+  }];
+
+  // If K-line data, add equity curve overlay
+  if (S.hasKline && S.bars) {
+    const eq = computeEquityCurve(ftc, S.bars);
+    if (eq && eq.samples.length) {
+      traces.push({
+        x: eq.samples.map(s => s.time),
+        y: eq.samples.map(s => s.equity),
+        type: 'scatter', mode: 'lines',
+        line: { color: '#ff9800', width: 2, dash: 'solid' },
+        name: '资金曲线(含浮亏)',
+        text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} USD<br>已实现: ${fmtN(s.balance)} USD<br>持仓浮亏: ${fmtN(s.unrealizedPL)} USD<br>持仓数: ${s.openCount}`),
+        hoverinfo: 'text',
+      });
+      // Peak equity line
+      const peakVals = [];
+      let peak = 0;
+      for (const s of eq.samples) {
+        if (s.equity > peak) peak = s.equity;
+        peakVals.push(peak);
+      }
+      traces.push({
+        x: eq.samples.map(s => s.time),
+        y: peakVals,
+        type: 'scatter', mode: 'lines',
+        line: { color: 'rgba(255,152,0,.3)', width: 1, dash: 'dot' },
+        name: '峰值资金', showlegend: true,
+        hoverinfo: 'skip',
+      });
+    }
+  }
+
+  Plotly.newPlot('c1', traces, {...PLY_BASE,
+    title:{text:'策略资金净值 / 累计收益曲线' + (S.hasKline?' （含K线模拟资金曲线）':''),font:{size:14}},
+    shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
+    xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
+    yaxis:{...PLY_BASE.yaxis,title:'金额（USD）'},
   },{responsive:true,displayModeBar:false});
 }
 
-function plotC2Merged(ft) {
+function plotEntryTiming(ft) {
   const mk = (arr,label,color) => ({
     x:arr.map(t=>t.openTimeBJ), y:arr.map(t=>t.netProfit),
     type:'scatter',mode:'markers',
     marker:{size:9,color,opacity:.85,line:{width:1,color:'#0f1117'}},
-    text:arr.map(t=>`<b>#${t.ticket}</b><br>${t.type.toUpperCase()} ${t.item} ${t.size}手<br>开: ${fmtDT(t.openTimeBJ)}<br>平: ${fmtDT(t.closeTimeBJ)}<br>持仓: ${holdFmt(t.holdingMin)}<br>盈亏: ${fmtN(t.netProfit)} USD`),
+    text:arr.map(t=>`<b>#${t.ticket}</b><br>${t.type.toUpperCase()} ${t.item} ${t.size}手<br>开: ${fmtDT(t.openTimeBJ)}<br>平: ${fmtDT(t.closeTimeBJ)}<br>持仓: ${holdFmt(t.holdingMin)}<br>盈亏: ${fmtN(t.netProfit)} USD${t.maxFloatingLoss!=null?'<br>最大浮亏: -'+t.maxFloatingLoss.toFixed(2)+' USD':''}`),
     hoverinfo:'text',name:label,
   });
   const allX=ft.map(t=>t.openTimeBJ.getTime());
   Plotly.newPlot('c2',[
     mk(ft.filter(t=>t.netProfit>0), '盈利','#26a69a'),
     mk(ft.filter(t=>t.netProfit<=0),'亏损','#ef5350'),
-  ],{...PLY,
+  ],{...PLY_BASE,
     title:{text:'进场时机监控：开仓时间 × 盈亏分布',font:{size:14}},
     shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1}}],
-    xaxis:{...PLY.xaxis,title:'开仓时间（北京）'},
-    yaxis:{...PLY.yaxis,title:'单笔盈亏（USD）'},
+    xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
+    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（USD）'},
   },{responsive:true,displayModeBar:false});
 }
 
@@ -591,18 +1263,142 @@ function plotGantt(trades, divId, byFile) {
       color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'rgba(38,166,154,.82)':'rgba(239,83,80,.82)'),
       line:{color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'#1a9990':'#c62828'),width:1},
     },
-    text:sorted.map(t=>`<b>${t.type.toUpperCase()} #${t.ticket}</b><br>品种: ${t.item} 手数: ${t.size}<br>开: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>平: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>持仓: ${holdFmt(t.holdingMin)}<br>${byFile?'来源: '+t.sourceFile+'<br>':''}盈亏: <b>${fmtN(t.netProfit)} USD</b>`),
+    text:sorted.map(t=>`<b>${t.type.toUpperCase()} #${t.ticket}</b><br>品种: ${t.item} 手数: ${t.size}<br>开: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>平: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>持仓: ${holdFmt(t.holdingMin)}<br>${byFile?'来源: '+t.sourceFile+'<br>':''}盈亏: <b>${fmtN(t.netProfit)} USD</b>${t.maxFloatingLoss!=null?'<br>最大浮亏: <b style=color:#ef5350>-'+t.maxFloatingLoss.toFixed(2)+' USD</b>':''}`),
     hoverinfo:'text',showlegend:false,
-  }],{...PLY,
+  }],{...PLY_BASE,
     title:{text:'持仓甘特图（开仓 → 平仓时间轴）',font:{size:14}},
-    xaxis:{...PLY.xaxis,type:'date',title:'时间（北京）',tickformat:'%H:%M',side:'top'},
-    yaxis:{...PLY.yaxis,automargin:true,autorange:'reversed',tickfont:{size:10}},
+    xaxis:{...PLY_BASE.xaxis,type:'date',title:'时间（北京）',tickformat:'%H:%M',side:'top'},
+    yaxis:{...PLY_BASE.yaxis,automargin:true,autorange:'reversed',tickfont:{size:10}},
     height:Math.min(Math.max(320,sorted.length*26+130),1600),
     margin:{l:140,r:20,t:70,b:20},
   },{responsive:true,displayModeBar:true,scrollZoom:false});
 }
 
-// ── Compare view ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// New K-line Enhanced Charts
+// ══════════════════════════════════════════════════════════════
+function plotFloatingCurve(ft) {
+  if (!S.bars) return;
+  const eq = computeEquityCurve(ft, S.bars);
+  if (!eq || !eq.samples.length) return;
+
+  const traces = [
+    {
+      x: eq.samples.map(s => s.time),
+      y: eq.samples.map(s => s.equity),
+      type: 'scatter', mode: 'lines',
+      line: { color: '#ff9800', width: 2.5 },
+      name: '资金曲线',
+      text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} USD<br>已实现: ${fmtN(s.balance)} USD<br>浮亏: ${fmtN(s.unrealizedPL)} USD<br>持仓数: ${s.openCount}`),
+      hoverinfo: 'text',
+    },
+    {
+      x: eq.samples.map(s => s.time),
+      y: eq.samples.map(s => s.balance),
+      type: 'scatter', mode: 'lines',
+      line: { color: '#26a69a', width: 1.5, dash: 'dash' },
+      name: '已实现盈亏',
+      hoverinfo: 'skip',
+    },
+    {
+      x: eq.samples.map(s => s.time),
+      y: eq.samples.map(s => -s.drawdown),
+      type: 'scatter', mode: 'lines',
+      line: { color: '#ef5350', width: 1.5 },
+      fill: 'tozeroy', fillcolor: 'rgba(239,83,80,.1)',
+      name: '回撤',
+      text: eq.samples.map(s => `回撤: -${s.drawdown.toFixed(2)} USD`),
+      hoverinfo: 'text',
+      yaxis: 'y2',
+    },
+  ];
+
+  Plotly.newPlot('c-floating', traces, {...PLY_BASE,
+    title:{text:'账户资金曲线 & 浮亏回撤（K线模拟）',font:{size:14}},
+    xaxis:{...PLY_BASE.xaxis,title:'时间（北京）'},
+    yaxis:{...PLY_BASE.yaxis,title:'资金（USD）',side:'left'},
+    yaxis2:{...PLY_BASE.yaxis,title:'回撤（USD）',side:'right',overlaying:'y',gridcolor:'transparent',
+      tickfont:{color:'#ef5350'},titlefont:{color:'#ef5350'}},
+    shapes:[{type:'line',x0:eq.samples[0].time,x1:eq.samples[eq.samples.length-1].time,y0:0,y1:0,
+      line:{color:'#8b90a8',width:1,dash:'dash'},yref:'y2'}],
+  },{responsive:true,displayModeBar:false});
+}
+
+function plotTradeFloating(ft) {
+  if (!S.hasKline) return;
+  const flt = ft.filter(t => t.maxFloatingLoss !== null);
+  if (!flt.length) return;
+
+  const colors = flt.map(t => t.netProfit > 0 ? '#26a69a' : '#ef5350');
+
+  Plotly.newPlot('c-trade-fl', [{
+    x: flt.map(t => t.holdingMin),
+    y: flt.map(t => -t.maxFloatingLoss),
+    type: 'scatter', mode: 'markers',
+    marker: {
+      size: flt.map(t => Math.min(20, Math.max(5, Math.sqrt(t.maxFloatingLoss) * 3))),
+      color: colors,
+      opacity: 0.8,
+      line: { width: 1, color: '#0f1117' },
+    },
+    text: flt.map(t =>
+      `<b>#${t.ticket}</b> ${t.type.toUpperCase()} ${t.item}<br>` +
+      `开仓: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>` +
+      `平仓: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>` +
+      `持仓: ${holdFmt(t.holdingMin)} 手数: ${t.size}<br>` +
+      `<b>最大浮亏: -${t.maxFloatingLoss.toFixed(2)} USD</b><br>` +
+      `最大浮盈: +${t.maxFloatingProfit.toFixed(2)} USD<br>` +
+      `实际盈亏: ${fmtN(t.netProfit)} USD`
+    ),
+    hoverinfo: 'text',
+    name: '交易浮亏',
+  }], {...PLY_BASE,
+    title: { text: '每笔交易：持仓时间 × 最大浮亏（气泡大小=浮亏金额）', font: { size: 14 } },
+    xaxis: { ...PLY_BASE.xaxis, title: '持仓时长（分钟）' },
+    yaxis: { ...PLY_BASE.yaxis, title: '最大浮亏（USD）' },
+    shapes: [{ type: 'line', x0: 0, x1: Math.max(...flt.map(t => t.holdingMin), 1), y0: 0, y1: 0,
+      line: { color: '#8b90a8', width: 1, dash: 'dash' } }],
+  }, { responsive: true, displayModeBar: false });
+}
+
+function renderFLTable(ft) {
+  const flt = ft.filter(t => t.maxFloatingLoss !== null && t.maxFloatingLoss > 0);
+  if (!flt.length) {
+    document.getElementById('fl-table-wrap').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">无浮亏数据</div>';
+    return;
+  }
+
+  // Top 20 worst floating losses
+  const top20 = [...flt].sort((a, b) => b.maxFloatingLoss - a.maxFloatingLoss).slice(0, 20);
+  const header = `<thead><tr>
+    <th>排名</th><th>订单号</th><th>类型</th><th>品种</th><th>手数</th>
+    <th>开仓时间</th><th>平仓时间</th><th>持仓</th>
+    <th>最大浮亏</th><th>最大浮盈</th><th>实际盈亏</th><th>浮亏/实亏比</th>
+  </tr></thead>`;
+
+  const body = '<tbody>' + top20.map((t, i) => {
+    const ratio = t.netProfit !== 0 ? (t.maxFloatingLoss / Math.abs(t.netProfit)).toFixed(1) : '∞';
+    const ratioCls = ratio > 5 ? 'neg' : ratio > 2 ? 'warn' : 'pos';
+    return `<tr>
+      <td style="color:var(--muted)">#${i+1}</td>
+      <td>${t.ticket}</td>
+      <td><span class="ty${t.type}">${t.type.toUpperCase()}</span></td>
+      <td>${t.item}</td><td>${t.size}</td>
+      <td>${fmtDT(t.openTimeBJ)}</td><td>${fmtDT(t.closeTimeBJ)}</td>
+      <td>${holdFmt(t.holdingMin)}</td>
+      <td class="neg" style="font-weight:700">-${t.maxFloatingLoss.toFixed(2)} USD</td>
+      <td class="pos">+${t.maxFloatingProfit.toFixed(2)} USD</td>
+      <td class="${nCls(t.netProfit)}" style="font-weight:600">${fmtN(t.netProfit)}</td>
+      <td class="${ratioCls}">${ratio}x</td>
+    </tr>`;
+  }).join('') + '</tbody>';
+
+  document.getElementById('fl-table-wrap').innerHTML = `<table class="ctable">${header}${body}</table>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Compare View
+// ══════════════════════════════════════════════════════════════
 function renderCompare() {
   const ft=S.filteredTrades; if (!ft.length) return;
   renderCTable();
@@ -644,12 +1440,13 @@ function renderCTable() {
 }
 
 function plotC1Compare() {
+  const initCap = getInitCapital();
   const traces = S.files.map((f,idx) => {
     const t = S.filteredTrades.filter(x=>x.sourceIndex===idx);
     if (!t.length) return null;
     const tc=withCum(t), color=FILE_COLORS[idx%8];
     return {
-      x:tc.map(t=>t.closeTimeBJ), y:tc.map(t=>t.cumulativeProfit),
+      x:tc.map(t=>t.closeTimeBJ), y:tc.map(t=>initCap + t.cumulativeProfit),
       type:'scatter',mode:'lines+markers',line:{color,width:2.5},marker:{size:5,color},
       text:tc.map(t=>`<b>${f.fileName}</b><br>#${t.ticket}<br>平仓: ${fmtDT(t.closeTimeBJ)}<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
       hoverinfo:'text',name:f.fileName,
@@ -657,11 +1454,11 @@ function plotC1Compare() {
   }).filter(Boolean);
   if (!traces.length) return;
   const allX=traces.flatMap(t=>t.x.map(d=>d.getTime()));
-  Plotly.newPlot('c1c',traces,{...PLY,
+  Plotly.newPlot('c1c',traces,{...PLY_BASE,
     title:{text:'各文件累计收益曲线对比',font:{size:14}},
-    shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1,dash:'dash'}}],
-    xaxis:{...PLY.xaxis,title:'平仓时间（北京）'},
-    yaxis:{...PLY.yaxis,title:'累计净利润（USD）'},
+    shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
+    xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
+    yaxis:{...PLY_BASE.yaxis,title:'累计净利润（USD）'},
   },{responsive:true,displayModeBar:false});
 }
 
@@ -678,24 +1475,27 @@ function plotC2Compare(ft) {
     };
   }).filter(Boolean);
   if (!traces.length) return;
-  Plotly.newPlot('c2c',traces,{...PLY,
+  Plotly.newPlot('c2c',traces,{...PLY_BASE,
     title:{text:'进场时机分布（按文件着色）',font:{size:14}},
-    xaxis:{...PLY.xaxis,title:'开仓时间（北京）'},
-    yaxis:{...PLY.yaxis,title:'单笔盈亏（USD）'},
+    xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
+    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（USD）'},
   },{responsive:true,displayModeBar:false});
 }
 
-// ── Trade Table ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Trade Table
+// ══════════════════════════════════════════════════════════════
 function renderTable() {
   const { sort, page, pageSize, filteredTrades:ft } = S;
   const sorted = [...ft].sort((a,b) => {
     let av=a[sort.key], bv=b[sort.key];
     if (av instanceof Date) av=av.getTime(), bv=bv.getTime();
     if (typeof av==='string') av=av.toLowerCase(), bv=bv.toLowerCase();
+    if (av == null) av = 0; if (bv == null) bv = 0;
     return av<bv ? (sort.dir==='asc'?-1:1) : av>bv ? (sort.dir==='asc'?1:-1) : 0;
   });
 
-  ['sourceFile','ticket','type','item','openTimeBJ','closeTimeBJ','holdingMin','netProfit'].forEach(k => {
+  ['sourceFile','ticket','type','item','openTimeBJ','closeTimeBJ','holdingMin','netProfit','maxFloatingLoss'].forEach(k => {
     const el=document.getElementById('si-'+k);
     if (el) el.textContent = sort.key===k ? (sort.dir==='asc'?'↑':'↓') : '';
   });
@@ -706,6 +1506,8 @@ function renderTable() {
 
   document.getElementById('tbody').innerHTML = slice.map(t => {
     const hold=holdFmt(t.holdingMin), dc=FILE_COLORS[t.sourceIndex%8];
+    const fl = t.maxFloatingLoss != null ? `-${t.maxFloatingLoss.toFixed(2)} USD` : '-';
+    const flCls = t.maxFloatingLoss != null && t.maxFloatingLoss > 0 ? 'neg' : 'neu';
     return `<tr>
       <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dc};margin-right:5px;vertical-align:middle"></span>${t.sourceFile}</td>
       <td>${t.ticket}</td>
@@ -714,6 +1516,7 @@ function renderTable() {
       <td>${fmtDT(t.openTimeBJ)}</td><td>${t.openPrice.toFixed(2)}</td>
       <td>${fmtDT(t.closeTimeBJ)}</td><td>${t.closePrice.toFixed(2)}</td>
       <td>${hold}</td>
+      <td class="${flCls}" style="font-weight:600">${fl}</td>
       <td style="color:var(--muted);max-width:110px;overflow:hidden;text-overflow:ellipsis">${t.comment||'-'}</td>
       <td class="${nCls(t.netProfit)}" style="font-weight:600">${fmtN(t.netProfit)}</td>
     </tr>`;
@@ -735,7 +1538,9 @@ const goPage  = p => { S.page=p; renderTable(); };
 const setSort = k => { S.sort.dir = S.sort.key===k ? (S.sort.dir==='asc'?'desc':'asc') : 'asc'; S.sort.key=k; S.page=1; renderTable(); };
 const toggleTable = () => { const c=document.getElementById('tcontent'),i=document.getElementById('ticon'); c.classList.toggle('open'); i.classList.toggle('open'); };
 
-// ── View switch ────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// View Switch & UI Helpers
+// ══════════════════════════════════════════════════════════════
 function setView(mode) {
   S.viewMode=mode;
   document.getElementById('view-merged').style.display  = mode==='merged' ?'':'none';
@@ -745,35 +1550,44 @@ function setView(mode) {
   renderAll();
 }
 
-// ── UI helpers ─────────────────────────────────────────────────
 function showSec(id) {
   ['drop-zone','loading','results'].forEach(s=>document.getElementById(s).style.display='none');
   document.getElementById('error-msg').style.display='none';
+  document.getElementById('kline-status').style.display='none';
   if (id==='results') document.getElementById('results').style.display='block';
   else if (id==='loading') document.getElementById('loading').style.display='block';
   else document.getElementById('drop-zone').style.display='block';
 }
+
 function showErr(msg) {
   document.getElementById('drop-zone').style.display='block';
   const el=document.getElementById('error-msg'); el.style.display='block'; el.textContent='❌ '+msg;
   document.getElementById('loading').style.display='none';
   document.getElementById('results').style.display='none';
+  document.getElementById('kline-status').style.display='none';
 }
+
 function resetAll() {
-  Object.assign(S,{files:[],allTrades:[],filteredTrades:[],viewMode:'merged',
+  Object.assign(S,{files:[],allTrades:[],filteredTrades:[],bars:null,klineInfo:null,hasKline:false,viewMode:'merged',
     filters:{dateStart:'',dateEnd:'',symbol:'all',comment:'all'},sort:{key:'closeTimeBJ',dir:'asc'},page:1});
   document.getElementById('file-input').value='';
   document.getElementById('view-merged').style.display='';
   document.getElementById('view-compare').style.display='none';
   document.getElementById('btn-merged').classList.add('active');
   document.getElementById('btn-compare').classList.remove('active');
+  document.getElementById('kline-status').style.display='none';
+  document.getElementById('kline-charts').style.display='none';
+  document.getElementById('kbadge-c1').style.display='none';
+  document.getElementById('fmt-badge').style.display='none';
   showSec('upload');
 }
+
 function stepOffset(d) {
   const el=document.getElementById('tz-offset');
   el.value=Math.max(-14,Math.min(14,(parseFloat(el.value)||0)+d));
   updateHint();
 }
+
 function updateHint() {
   const v=parseFloat(document.getElementById('tz-offset').value);
   const h=document.getElementById('offset-hint');
@@ -781,7 +1595,9 @@ function updateHint() {
                   v>0 ? `北京时间 = 平台时间 +${v} 小时` : `北京时间 = 平台时间 ${v} 小时`;
 }
 
-// ── Events ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// Event Handlers
+// ══════════════════════════════════════════════════════════════
 const dz=document.getElementById('drop-zone'), fi=document.getElementById('file-input');
 dz.addEventListener('dragover',  e=>{e.preventDefault();dz.classList.add('drag-over')});
 dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
