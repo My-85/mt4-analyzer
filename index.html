@@ -427,8 +427,9 @@ function parseMT4(html, fileName) {
   }
   if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格，请确认是 MT4/MT5 导出的账单文件。`);
 
-  // Detect cent accounts
-  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+  // Detect cent accounts from body text
+  var isCent = /USC/i.test(bt) || /美分/i.test(bt) || /cent/i.test(bt);
+  var centFactor = isCent ? 0.01 : 1.0;
 
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
@@ -483,10 +484,11 @@ function parseMT5HTML(html, fileName) {
   const text = doc.body?.innerText || '';
 
   // Extract account info
+  const isCent = /USC/i.test(text) || /美分/i.test(text) || /cent/i.test(text);
   const accountInfo = {
     account:  (text.match(/账号[：:]\s*(\d+)/)||text.match(/Account[：:]\s*(\d+)/)||['','?'])[1].trim(),
     name:     (text.match(/姓名[：:]\s*([^\n]+)/)||text.match(/Name[：:]\s*([^\n]+)/)||['','?'])[1].trim(),
-    currency: (text.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
+    currency: isCent ? 'USC' : (text.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
   };
 
   // Find table with trade data
@@ -515,8 +517,8 @@ function parseMT5HTML(html, fileName) {
   // If detected as MT4 format, delegate
   if (!isMT5) return parseMT4(html, fileName);
 
-  // Detect cent accounts
-  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+  // Use isCent detected earlier
+  var centFactor = isCent ? 0.01 : 1.0;
 
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
@@ -595,14 +597,16 @@ function parseMT5XLSX(buffer, fileName) {
 
   // Extract account info from rows before header
   const allText = data.slice(0, headerRow).flat().map(c => String(c || '')).join('\n');
+  // Detect USC cent accounts — check both Currency label and (USC, pattern in account field
+  const isCent = /USC/i.test(allText) || /美分/i.test(allText) || /cent/i.test(allText);
   const accountInfo = {
     account:  (allText.match(/账户[：:]\s*(\d+)/)||allText.match(/Account[：:]\s*(\d+)/)||['','?'])[1].trim(),
     name:     (allText.match(/姓名[：:]\s*([^\n]+)/)||allText.match(/Name[：:]\s*([^\n]+)/)||['','?'])[1].trim(),
-    currency: (allText.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
+    currency: isCent ? 'USC' : (allText.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
   };
 
   // Detect cent accounts (USC currency → profits in cents, must convert to dollars)
-  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+  var centFactor = isCent ? 0.01 : 1.0;
   if (centFactor < 1) console.log('Detected USC cent account — converting values to USD (x0.01)');
 
   const trades = [];
