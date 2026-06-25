@@ -1026,6 +1026,13 @@ async function processFiles(files) {
     }
   }
 
+  // Auto-detect cent account and set currency selector
+  var hasCent = S.files.some(function(f) { return f.accountInfo && f.accountInfo.currency === 'USC'; });
+  if (hasCent) {
+    var cuEl = document.getElementById('currency-unit');
+    if (cuEl && cuEl.value !== 'USC') { cuEl.value = 'USC'; }
+  }
+
   // Update file type badges
   updateFormatBadge();
 
@@ -1260,37 +1267,8 @@ function plotEquityCurve(ftc) {
     hoverinfo:'text',name:'累计净利润',
   }];
 
-  if (S.hasKline && S.bars) {
-    const eq = computeEquityCurve(ftc, S.bars);
-    if (eq && eq.samples.length) {
-      traces.push({
-        x: eq.samples.map(s => s.time),
-        y: eq.samples.map(s => s.equity),
-        type: 'scatter', mode: 'lines',
-        line: { color: '#ff9800', width: 2, dash: 'solid' },
-        name: '资金曲线(含浮亏)',
-        text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} ${U}<br>已实现: ${fmtN(s.balance)} ${U}<br>持仓浮亏: ${fmtN(s.unrealizedPL)} ${U}<br>持仓数: ${s.openCount}`),
-        hoverinfo: 'text',
-      });
-      const peakVals = [];
-      let peak = 0;
-      for (const s of eq.samples) {
-        if (s.equity > peak) peak = s.equity;
-        peakVals.push(peak);
-      }
-      traces.push({
-        x: eq.samples.map(s => s.time),
-        y: peakVals,
-        type: 'scatter', mode: 'lines',
-        line: { color: 'rgba(255,152,0,.3)', width: 1, dash: 'dot' },
-        name: '峰值资金', showlegend: true,
-        hoverinfo: 'skip',
-      });
-    }
-  }
-
   Plotly.newPlot('c1', traces, {...PLY_BASE,
-    title:{text:'策略资金净值 / 累计收益曲线' + (S.hasKline?' （含K线模拟资金曲线）':''),font:{size:14}},
+    title:{text:'策略资金净值 / 累计收益曲线（已平仓）',font:{size:14}},
     shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'金额（' + U + '）'},
