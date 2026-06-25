@@ -429,7 +429,6 @@ function parseMT4(html, fileName) {
 
   // Detect cent accounts from body text
   var isCent = /USC/i.test(bt) || /美分/i.test(bt) || /cent/i.test(bt);
-  var centFactor = isCent ? 0.01 : 1.0;
 
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
@@ -455,9 +454,9 @@ function parseMT4(html, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(c[13].textContent) * centFactor;
-    const commission  = pNum(c[10].textContent) * centFactor;
-    const swap        = pNum(c[12].textContent) * centFactor;
+    const profit      = pNum(c[13].textContent);
+    const commission  = pNum(c[10].textContent);
+    const swap        = pNum(c[12].textContent);
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = extractCommentMT4(c[0].getAttribute('title'));
@@ -522,7 +521,6 @@ function parseMT5HTML(html, fileName) {
   if (!isMT5) return parseMT4(html, fileName);
 
   // Use isCent detected earlier
-  var centFactor = isCent ? 0.01 : 1.0;
 
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
@@ -554,9 +552,9 @@ function parseMT5HTML(html, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(vals[11]) * centFactor;
-    const commission  = pNum(vals[9]) * centFactor;
-    const swap        = pNum(vals[10]) * centFactor;
+    const profit      = pNum(vals[11]);
+    const commission  = pNum(vals[9]);
+    const swap        = pNum(vals[10]);
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = vals[4] && vals[4] !== '' ? vals[4] : '';
@@ -613,9 +611,6 @@ function parseMT5XLSX(buffer, fileName) {
     currency: isCent ? 'USC' : (allText.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
   };
 
-  // Detect cent accounts (USC currency → profits in cents, must convert to dollars)
-  var centFactor = isCent ? 0.01 : 1.0;
-  if (centFactor < 1) console.log('Detected USC cent account — converting values to USD (x0.01)');
 
   const trades = [];
   let initialBalance = 0;
@@ -642,9 +637,9 @@ function parseMT5XLSX(buffer, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(row[12]) * centFactor;
-    const commission  = pNum(row[10]) * centFactor;
-    const swap        = pNum(row[11]) * centFactor;
+    const profit      = pNum(row[12]);
+    const commission  = pNum(row[10]);
+    const swap        = pNum(row[11]);
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = '';
@@ -901,15 +896,18 @@ function isCentTrade(trade) {
 
 function getPointValue(trade) {
   const priceDiff = Math.abs(trade.closePrice - trade.openPrice);
-  // Base lot value: XAUUSD 1 std lot = $100/point, Forex 1 std lot = $10/pip
   var isGold = /^XAU/i.test(trade.item) || /^GOLD/i.test(trade.item);
   var basePV = isGold ? 100 : 10;
   var defaultPV = trade.size * basePV;
-  // Cent accounts have 1/100 the value per lot
-  if (isCentTrade(trade)) defaultPV *= 0.01;
-  // Derive actual point value from trade profit (most reliable)
+  // For cent accounts: profit is in cents, but K-line prices are in dollars.
+  // Convert profit to dollar-equivalent for the point value ratio.
+  var profitForCalc = trade.profit;
+  if (isCentTrade(trade)) {
+    defaultPV *= 0.01;        // cent lot = 1/100 standard lot value
+    profitForCalc *= 0.01;    // convert cents to dollars for price ratio
+  }
   if (priceDiff > 0.0001) {
-    var iv = Math.abs(trade.profit) / priceDiff;
+    var iv = Math.abs(profitForCalc) / priceDiff;
     if (iv > 0 && isFinite(iv) && iv <= defaultPV * 10) return iv;
   }
   return defaultPV;
@@ -1001,34 +999,6 @@ async function processFiles(files) {
 
       // Compute floating P&L for each trade
       S.allTrades = S.allTrades.map(t => computeTradeFloating(t, S.bars));
-
-      // Debug: log first 10 trades' floating P&L
-      if (S.hasKline) {
-        console.log('=== Floating P&L Debug (first 10 trades) ===');
-        S.allTrades.slice(0, 10).forEach(function(t, i) {
-          console.log('Trade #' + i + ': ' + t.type + ' ' + t.item +
-            ' | size=' + t.size + ' | open=' + t.openPrice + ' close=' + t.closePrice +
-            ' | profit=' + t.profit + ' netProfit=' + t.netProfit +
-            ' | maxFL=' + (t.maxFloatingLoss != null ? t.maxFloatingLoss.toFixed(4) : 'null') +
-            ' | maxFP=' + (t.maxFloatingProfit != null ? t.maxFloatingProfit.toFixed(4) : 'null') +
-            ' | centSymbol=' + isCentTrade(t) +
-            ' | PV=' + getPointValue(t).toFixed(6));
-        });
-        // Log trades with largest floating losses
-        var sortedByFL = S.allTrades.filter(function(t) { return t.maxFloatingLoss != null && t.maxFloatingLoss > 0; })
-          .sort(function(a, b) { return b.maxFloatingLoss - a.maxFloatingLoss; });
-        if (sortedByFL.length > 0) {
-          console.log('=== Top 5 worst floating losses ===');
-          sortedByFL.slice(0, 5).forEach(function(t, i) {
-            console.log('  #' + (i+1) + ': Ticket ' + t.ticket + ' | ' + t.type + ' ' + t.item +
-              ' | maxFL=' + t.maxFloatingLoss.toFixed(2) +
-              ' | PV=' + getPointValue(t).toFixed(6) +
-              ' | holding=' + t.holdingMin + 'min' +
-              ' | open=' + (t.openTimeRaw||t.openTimeBJ).toISOString() +
-              ' | close=' + (t.closeTimeRaw||t.closeTimeBJ).toISOString());
-          });
-        }
-      }
 
       // Update trade data in S.files too
       for (let i = 0; i < S.files.length; i++) {
