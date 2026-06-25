@@ -427,6 +427,9 @@ function parseMT4(html, fileName) {
   }
   if (!mainTable) throw new Error(`"${fileName}" 未找到交易表格，请确认是 MT4/MT5 导出的账单文件。`);
 
+  // Detect cent accounts
+  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
   let initialBalance = 0;
@@ -451,9 +454,9 @@ function parseMT4(html, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(c[13].textContent);
-    const commission  = pNum(c[10].textContent);
-    const swap        = pNum(c[12].textContent);
+    const profit      = pNum(c[13].textContent) * centFactor;
+    const commission  = pNum(c[10].textContent) * centFactor;
+    const swap        = pNum(c[12].textContent) * centFactor;
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = extractCommentMT4(c[0].getAttribute('title'));
@@ -512,6 +515,9 @@ function parseMT5HTML(html, fileName) {
   // If detected as MT4 format, delegate
   if (!isMT5) return parseMT4(html, fileName);
 
+  // Detect cent accounts
+  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+
   const rows = mainTable.querySelectorAll('tr');
   const trades = [];
   let initialBalance = 0;
@@ -542,9 +548,9 @@ function parseMT5HTML(html, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(vals[11]);
-    const commission  = pNum(vals[9]);
-    const swap        = pNum(vals[10]);
+    const profit      = pNum(vals[11]) * centFactor;
+    const commission  = pNum(vals[9]) * centFactor;
+    const swap        = pNum(vals[10]) * centFactor;
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = vals[4] && vals[4] !== '' ? vals[4] : '';
@@ -595,6 +601,10 @@ function parseMT5XLSX(buffer, fileName) {
     currency: (allText.match(/Currency[：:]\s*([A-Z]+)/)||['','USD'])[1].trim(),
   };
 
+  // Detect cent accounts (USC currency → profits in cents, must convert to dollars)
+  var centFactor = (accountInfo.currency === 'USC') ? 0.01 : 1.0;
+  if (centFactor < 1) console.log('Detected USC cent account — converting values to USD (x0.01)');
+
   const trades = [];
   let initialBalance = 0;
   const bjMs = getBJms();
@@ -620,9 +630,9 @@ function parseMT5XLSX(buffer, fileName) {
     const closeTimeBJ = new Date(closeUTC.getTime() + bjMs);
     const openTimeRaw  = new Date(openUTC.getTime());   // platform time for K-line matching
     const closeTimeRaw = new Date(closeUTC.getTime());
-    const profit      = pNum(row[12]);
-    const commission  = pNum(row[10]);
-    const swap        = pNum(row[11]);
+    const profit      = pNum(row[12]) * centFactor;
+    const commission  = pNum(row[10]) * centFactor;
+    const swap        = pNum(row[11]) * centFactor;
     const netProfit   = profit + commission + swap;
     const holdingMin  = Math.round((closeUTC - openUTC) / 60000);
     const comment     = '';
