@@ -889,25 +889,16 @@ function computeEquityCurve(trades, bars) {
   };
 }
 
-function isCentTrade(trade) {
-  // Detect cent accounts: symbol ends with 'c' (XAUUSDc) or contains USC
-  return /c$/i.test(trade.item) || /USC/i.test(trade.item);
-}
-
 function getPointValue(trade) {
   const priceDiff = Math.abs(trade.closePrice - trade.openPrice);
+  // Base lot value: XAUUSD 1 std lot = $100/point (or 10000 USC/point for cent)
+  // No cent conversion needed: if profit is in USC and prices in USD,
+  // the ratio naturally gives point value in USC per USD-price-point.
   var isGold = /^XAU/i.test(trade.item) || /^GOLD/i.test(trade.item);
   var basePV = isGold ? 100 : 10;
   var defaultPV = trade.size * basePV;
-  // For cent accounts: profit is in cents, but K-line prices are in dollars.
-  // Convert profit to dollar-equivalent for the point value ratio.
-  var profitForCalc = trade.profit;
-  if (isCentTrade(trade)) {
-    defaultPV *= 0.01;        // cent lot = 1/100 standard lot value
-    profitForCalc *= 0.01;    // convert cents to dollars for price ratio
-  }
   if (priceDiff > 0.0001) {
-    var iv = Math.abs(profitForCalc) / priceDiff;
+    var iv = Math.abs(trade.profit) / priceDiff;
     if (iv > 0 && isFinite(iv) && iv <= defaultPV * 10) return iv;
   }
   return defaultPV;
