@@ -464,9 +464,13 @@ function parseMT4(html, fileName) {
     const h = openTimeBJ.getUTCHours();
     const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
 
+    const op = pNum(c[5].textContent);
+    const cp = pNum(c[9].textContent);
+    if (op <= 0 || cp <= 0) continue;
+
     trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
       size: pNum(c[3].textContent), item: c[4].textContent.trim().toUpperCase(),
-      openPrice: pNum(c[5].textContent), closePrice: pNum(c[9].textContent),
+      openPrice: op, closePrice: cp,
       profit, commission, swap, netProfit, holdingMin,
       comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
       maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
@@ -559,9 +563,13 @@ function parseMT5HTML(html, fileName) {
     const h = openTimeBJ.getUTCHours();
     const session = h >= 6 && h < 14 ? '亚盘' : h >= 14 && h < 22 ? '欧盘' : '美盘';
 
+    const op = pNum(vals[6]);
+    const cp = pNum(vals[8]);
+    if (op <= 0 || cp <= 0) continue;
+
     trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
       size: pNum(vals[5]), item: vals[2].toUpperCase(),
-      openPrice: pNum(vals[6]), closePrice: pNum(vals[8]),
+      openPrice: op, closePrice: cp,
       profit, commission, swap, netProfit, holdingMin,
       comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
       maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
@@ -647,9 +655,15 @@ function parseMT5XLSX(buffer, fileName) {
     // Handle partial fills like "0.01 / 0.01"
     const sizeNum = pNum(sizeRaw.includes('/') ? sizeRaw.split('/')[0] : sizeRaw);
 
+    const op = pNum(row[5]);
+    const cp = pNum(row[9]);
+
+    // Skip trades with zero/invalid prices (corrupted data rows)
+    if (op <= 0 || cp <= 0) continue;
+
     trades.push({ ticket, openTimeBJ, closeTimeBJ, openTimeRaw, closeTimeRaw, type,
       size: sizeNum, item: String(row[2] || '').toUpperCase().trim(),
-      openPrice: pNum(row[5]), closePrice: pNum(row[9]),
+      openPrice: op, closePrice: cp,
       profit, commission, swap, netProfit, holdingMin,
       comment, session, sourceFile: fileName, sourceIndex: -1, cumulativeProfit: 0,
       maxFloatingLoss: null, maxFloatingProfit: null, maxFloatingLossPct: null });
@@ -727,15 +741,17 @@ function computeTradeFloating(trade, bars) {
   const closeT = (trade.closeTimeRaw || trade.closeTimeBJ).getTime();
 
   // Binary search to find start/end indices in bars
+  // Expand range by 5 min in each direction to handle K-line gaps
+  var SEARCH_PAD = 5 * 60000;
   let lo = 0, hi = bars.length - 1;
-  while (lo < hi) { const mid = (lo + hi) >> 1; if (bars[mid].time.getTime() < openT) lo = mid + 1; else hi = mid; }
-  const startIdx = lo;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (bars[mid].time.getTime() < openT - SEARCH_PAD) lo = mid + 1; else hi = mid; }
+  var startIdx = lo;
 
   lo = 0; hi = bars.length - 1;
-  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (bars[mid].time.getTime() > closeT) hi = mid - 1; else lo = mid; }
-  const endIdx = lo;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (bars[mid].time.getTime() > closeT + SEARCH_PAD) hi = mid - 1; else lo = mid; }
+  var endIdx = lo;
 
-  if (startIdx > endIdx || startIdx >= bars.length) return trade;
+  if (startIdx > endIdx || startIdx >= bars.length || endIdx < 0) return trade;
 
   const isBuy = trade.type === 'buy';
   const openPrice = trade.openPrice;
