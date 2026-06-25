@@ -166,10 +166,22 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
     <span class="ohint" id="offset-hint">北京时间 = 平台时间 +5 小时</span>
   </div>
   <div class="offset-row">
-    <label for="init-capital">起始本金（USD）：</label>
+    <label for="init-capital">起始本金：</label>
     <input type="number" id="init-capital" value="0" min="0" step="100" placeholder="0"
       style="width:120px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 9px;font-size:14px;font-weight:600;text-align:center;outline:none"
       onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+    <select id="currency-unit"
+      style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 6px;font-size:13px;font-weight:600;text-align:center;outline:none;cursor:pointer"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      <option value="USD">USD</option>
+      <option value="USC">USC</option>
+      <option value="CNY">CNY</option>
+      <option value="EUR">EUR</option>
+      <option value="GBP">GBP</option>
+      <option value="JPY">JPY</option>
+      <option value="AUD">AUD</option>
+      <option value="HKD">HKD</option>
+    </select>
     <span class="ohint">留空或填 0 则不叠加本金</span>
   </div>
   <label class="btn" for="file-input">选择文件（可多选）</label>
@@ -278,7 +290,7 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
             <th onclick="setSort('holdingMin')">持仓时长<span class="sico" id="si-holdingMin"></span></th>
             <th onclick="setSort('maxFloatingLoss')">最大浮亏<span class="sico" id="si-maxFloatingLoss"></span></th>
             <th>注释</th>
-            <th onclick="setSort('netProfit')">盈亏(USD)<span class="sico" id="si-netProfit"></span></th>
+            <th onclick="setSort('netProfit')">盈亏<span class="sico" id="si-netProfit"></span></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -346,6 +358,7 @@ const S = {
 // ══════════════════════════════════════════════════════════════
 const getBJms  = () => (parseFloat(document.getElementById('tz-offset').value) || 5) * 3600000;
 const getInitCapital = () => { var el = document.getElementById('init-capital'); return el ? (parseFloat(el.value) || 0) : 0; };
+const getCurrency = () => { var el = document.getElementById('currency-unit'); return el ? el.value : 'USD'; };
 const fmtDT    = d => d ? d.toISOString().replace('T',' ').slice(0,19) : '-';
 const fmtDate  = d => d ? d.toISOString().slice(0,10) : '';
 const fmtN     = (n,d=2) => (n>=0?'+':'')+n.toFixed(d);
@@ -1147,29 +1160,30 @@ function renderStats(s) {
   const pfS = isFinite(s.pf) ? s.pf.toFixed(2) : '∞';
   const pfC = s.pf>=1.5?'pos':s.pf>=1?'hi':'neg';
   const ddC = s.maxDDPct>20?'neg':s.maxDDPct>10?'hi':'pos';
+  var U = getCurrency();
 
   const cards = [
     { l:'总平仓笔数', v:`${s.n} 笔`,             sub:`盈 ${s.wins} / 亏 ${s.losses}`, c:'neu' },
     { l:'策略胜率',   v:`${s.wr.toFixed(1)}%`,   sub:'按笔数',  c:s.wr>=50?'pos':'neg' },
-    { l:'总净利润',   v:`${fmtN(s.tp)} USD`,     sub:'',        c:nCls(s.tp) },
-    { l:'数学期望',   v:`${fmtN(s.exp,2)} USD`,  sub:'每笔期望收益', c:nCls(s.exp) },
-    { l:'最大回撤',   v:`-${s.maxDD.toFixed(2)} USD`, sub:`${s.maxDDPct.toFixed(1)}% 回撤率`, c:ddC },
+    { l:'总净利润',   v:`${fmtN(s.tp)} ${U}`,     sub:'',        c:nCls(s.tp) },
+    { l:'数学期望',   v:`${fmtN(s.exp,2)} ${U}`,  sub:'每笔期望收益', c:nCls(s.exp) },
+    { l:'最大回撤',   v:`-${s.maxDD.toFixed(2)} ${U}`, sub:`${s.maxDDPct.toFixed(1)}% 回撤率`, c:ddC },
     { l:'最大连胜',   v:`${s.mCW} 笔`,           sub:'连续盈利', c:'pos' },
     { l:'最大连亏',   v:`${s.mCL} 笔`,           sub:'连续亏损', c:'neg' },
     { l:'做多胜率',   v:s.bwr!=null?`${s.bwr.toFixed(1)}%`:'N/A', sub:`Buy ${s.bN} 笔`,  c:s.bwr>=50?'pos':'neg' },
     { l:'做空胜率',   v:s.swr!=null?`${s.swr.toFixed(1)}%`:'N/A', sub:`Sell ${s.sN} 笔`, c:s.swr>=50?'pos':'neg' },
     { l:'盈亏比',     v:pfS,                     sub:'平均盈/平均亏', c:pfC },
-    { l:'最大单笔盈', v:`+${s.mxW.toFixed(2)} USD`, sub:'', c:'pos' },
-    { l:'最大单笔亏', v:`${s.mxL.toFixed(2)} USD`,  sub:'', c:'neg' },
+    { l:'最大单笔盈', v:`+${s.mxW.toFixed(2)} ${U}`, sub:'', c:'pos' },
+    { l:'最大单笔亏', v:`${s.mxL.toFixed(2)} ${U}`,  sub:'', c:'neg' },
     { l:'平均持仓',   v:holdFmt(s.aH),           sub:'', c:'neu' },
   ];
 
   // Add floating P&L cards if K-line available
   if (S.hasKline && s.flCount > 0) {
     cards.push(
-      { l:'平均最大浮亏', v:`-${s.avgMaxFL.toFixed(2)} USD`, sub:`${s.flCount} 笔有K线数据`, c:'warn' },
-      { l:'最大单笔浮亏', v:`-${s.worstFL.toFixed(2)} USD`, sub:'持仓期间最大回撤', c:'neg' },
-      { l:'平均最大浮盈', v:`+${s.avgMaxFP.toFixed(2)} USD`, sub:'持仓期间最大浮盈', c:'pos' },
+      { l:'平均最大浮亏', v:`-${s.avgMaxFL.toFixed(2)} ${U}`, sub:`${s.flCount} 笔有K线数据`, c:'warn' },
+      { l:'最大单笔浮亏', v:`-${s.worstFL.toFixed(2)} ${U}`, sub:'持仓期间最大回撤', c:'neg' },
+      { l:'平均最大浮盈', v:`+${s.avgMaxFP.toFixed(2)} ${U}`, sub:'持仓期间最大浮盈', c:'pos' },
     );
   }
 
@@ -1183,17 +1197,17 @@ function renderStats(s) {
 // ══════════════════════════════════════════════════════════════
 function plotEquityCurve(ftc) {
   const initCap = getInitCapital();
+  var U = getCurrency();
   const x=ftc.map(t=>t.closeTimeBJ), y=ftc.map(t=>initCap + t.cumulativeProfit);
   const fp=y.length?y[y.length-1]:0, lc=fp>=0?'#26a69a':'#ef5350';
   const traces = [{
     x,y,type:'scatter',mode:'lines+markers',
     line:{color:lc,width:2.5},marker:{size:5,color:lc},
     fill:'tozeroy',fillcolor:fp>=0?'rgba(38,166,154,.1)':'rgba(239,83,80,.1)',
-    text:ftc.map(t => `<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} USD<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
+    text:ftc.map(t => `<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} ${U}<br>累计: ${fmtN(t.cumulativeProfit)} ${U}`),
     hoverinfo:'text',name:'累计净利润',
   }];
 
-  // If K-line data, add equity curve overlay
   if (S.hasKline && S.bars) {
     const eq = computeEquityCurve(ftc, S.bars);
     if (eq && eq.samples.length) {
@@ -1203,10 +1217,9 @@ function plotEquityCurve(ftc) {
         type: 'scatter', mode: 'lines',
         line: { color: '#ff9800', width: 2, dash: 'solid' },
         name: '资金曲线(含浮亏)',
-        text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} USD<br>已实现: ${fmtN(s.balance)} USD<br>持仓浮亏: ${fmtN(s.unrealizedPL)} USD<br>持仓数: ${s.openCount}`),
+        text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} ${U}<br>已实现: ${fmtN(s.balance)} ${U}<br>持仓浮亏: ${fmtN(s.unrealizedPL)} ${U}<br>持仓数: ${s.openCount}`),
         hoverinfo: 'text',
       });
-      // Peak equity line
       const peakVals = [];
       let peak = 0;
       for (const s of eq.samples) {
@@ -1228,16 +1241,17 @@ function plotEquityCurve(ftc) {
     title:{text:'策略资金净值 / 累计收益曲线' + (S.hasKline?' （含K线模拟资金曲线）':''),font:{size:14}},
     shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
-    yaxis:{...PLY_BASE.yaxis,title:'金额（USD）'},
+    yaxis:{...PLY_BASE.yaxis,title:'金额（' + U + '）'},
   },{responsive:true,displayModeBar:false});
 }
 
 function plotEntryTiming(ft) {
+  var U = getCurrency();
   const mk = (arr,label,color) => ({
     x:arr.map(t=>t.openTimeBJ), y:arr.map(t=>t.netProfit),
     type:'scatter',mode:'markers',
     marker:{size:9,color,opacity:.85,line:{width:1,color:'#0f1117'}},
-    text:arr.map(t=>`<b>#${t.ticket}</b><br>${t.type.toUpperCase()} ${t.item} ${t.size}手<br>开: ${fmtDT(t.openTimeBJ)}<br>平: ${fmtDT(t.closeTimeBJ)}<br>持仓: ${holdFmt(t.holdingMin)}<br>盈亏: ${fmtN(t.netProfit)} USD${t.maxFloatingLoss!=null?'<br>最大浮亏: -'+t.maxFloatingLoss.toFixed(2)+' USD':''}`),
+    text:arr.map(t=>`<b>#${t.ticket}</b><br>${t.type.toUpperCase()} ${t.item} ${t.size}手<br>开: ${fmtDT(t.openTimeBJ)}<br>平: ${fmtDT(t.closeTimeBJ)}<br>持仓: ${holdFmt(t.holdingMin)}<br>盈亏: ${fmtN(t.netProfit)} ${U}${t.maxFloatingLoss!=null?'<br>最大浮亏: -'+t.maxFloatingLoss.toFixed(2)+' '+U:''}`),
     hoverinfo:'text',name:label,
   });
   const allX=ft.map(t=>t.openTimeBJ.getTime());
@@ -1248,11 +1262,12 @@ function plotEntryTiming(ft) {
     title:{text:'进场时机监控：开仓时间 × 盈亏分布',font:{size:14}},
     shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1}}],
     xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
-    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（USD）'},
+    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
   },{responsive:true,displayModeBar:false});
 }
 
 function plotGantt(trades, divId, byFile) {
+  var U = getCurrency();
   const sorted=[...trades].sort((a,b)=>a.openTimeBJ-b.openTimeBJ||a.closeTimeBJ-b.closeTimeBJ);
   Plotly.newPlot(divId,[{
     type:'bar',orientation:'h',
@@ -1263,7 +1278,7 @@ function plotGantt(trades, divId, byFile) {
       color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'rgba(38,166,154,.82)':'rgba(239,83,80,.82)'),
       line:{color:sorted.map(t=>byFile?FILE_COLORS[t.sourceIndex%8]:t.netProfit>0?'#1a9990':'#c62828'),width:1},
     },
-    text:sorted.map(t=>`<b>${t.type.toUpperCase()} #${t.ticket}</b><br>品种: ${t.item} 手数: ${t.size}<br>开: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>平: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>持仓: ${holdFmt(t.holdingMin)}<br>${byFile?'来源: '+t.sourceFile+'<br>':''}盈亏: <b>${fmtN(t.netProfit)} USD</b>${t.maxFloatingLoss!=null?'<br>最大浮亏: <b style=color:#ef5350>-'+t.maxFloatingLoss.toFixed(2)+' USD</b>':''}`),
+    text:sorted.map(t=>`<b>${t.type.toUpperCase()} #${t.ticket}</b><br>品种: ${t.item} 手数: ${t.size}<br>开: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>平: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>持仓: ${holdFmt(t.holdingMin)}<br>${byFile?'来源: '+t.sourceFile+'<br>':''}盈亏: <b>${fmtN(t.netProfit)} ${U}</b>${t.maxFloatingLoss!=null?'<br>最大浮亏: <b style=color:#ef5350>-'+t.maxFloatingLoss.toFixed(2)+' '+U+'</b>':''}`),
     hoverinfo:'text',showlegend:false,
   }],{...PLY_BASE,
     title:{text:'持仓甘特图（开仓 → 平仓时间轴）',font:{size:14}},
@@ -1279,6 +1294,7 @@ function plotGantt(trades, divId, byFile) {
 // ══════════════════════════════════════════════════════════════
 function plotFloatingCurve(ft) {
   if (!S.bars) return;
+  var U = getCurrency();
   const eq = computeEquityCurve(ft, S.bars);
   if (!eq || !eq.samples.length) return;
 
@@ -1289,7 +1305,7 @@ function plotFloatingCurve(ft) {
       type: 'scatter', mode: 'lines',
       line: { color: '#ff9800', width: 2.5 },
       name: '资金曲线',
-      text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} USD<br>已实现: ${fmtN(s.balance)} USD<br>浮亏: ${fmtN(s.unrealizedPL)} USD<br>持仓数: ${s.openCount}`),
+      text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} ${U}<br>已实现: ${fmtN(s.balance)} ${U}<br>浮亏: ${fmtN(s.unrealizedPL)} ${U}<br>持仓数: ${s.openCount}`),
       hoverinfo: 'text',
     },
     {
@@ -1307,7 +1323,7 @@ function plotFloatingCurve(ft) {
       line: { color: '#ef5350', width: 1.5 },
       fill: 'tozeroy', fillcolor: 'rgba(239,83,80,.1)',
       name: '回撤',
-      text: eq.samples.map(s => `回撤: -${s.drawdown.toFixed(2)} USD`),
+      text: eq.samples.map(s => `回撤: -${s.drawdown.toFixed(2)} ${U}`),
       hoverinfo: 'text',
       yaxis: 'y2',
     },
@@ -1316,8 +1332,8 @@ function plotFloatingCurve(ft) {
   Plotly.newPlot('c-floating', traces, {...PLY_BASE,
     title:{text:'账户资金曲线 & 浮亏回撤（K线模拟）',font:{size:14}},
     xaxis:{...PLY_BASE.xaxis,title:'时间（北京）'},
-    yaxis:{...PLY_BASE.yaxis,title:'资金（USD）',side:'left'},
-    yaxis2:{...PLY_BASE.yaxis,title:'回撤（USD）',side:'right',overlaying:'y',gridcolor:'transparent',
+    yaxis:{...PLY_BASE.yaxis,title:'资金（' + U + '）',side:'left'},
+    yaxis2:{...PLY_BASE.yaxis,title:'回撤（' + U + '）',side:'right',overlaying:'y',gridcolor:'transparent',
       tickfont:{color:'#ef5350'},titlefont:{color:'#ef5350'}},
     shapes:[{type:'line',x0:eq.samples[0].time,x1:eq.samples[eq.samples.length-1].time,y0:0,y1:0,
       line:{color:'#8b90a8',width:1,dash:'dash'},yref:'y2'}],
@@ -1326,6 +1342,7 @@ function plotFloatingCurve(ft) {
 
 function plotTradeFloating(ft) {
   if (!S.hasKline) return;
+  var U = getCurrency();
   const flt = ft.filter(t => t.maxFloatingLoss !== null);
   if (!flt.length) return;
 
@@ -1346,29 +1363,29 @@ function plotTradeFloating(ft) {
       `开仓: ${fmtDT(t.openTimeBJ)} @${t.openPrice.toFixed(2)}<br>` +
       `平仓: ${fmtDT(t.closeTimeBJ)} @${t.closePrice.toFixed(2)}<br>` +
       `持仓: ${holdFmt(t.holdingMin)} 手数: ${t.size}<br>` +
-      `<b>最大浮亏: -${t.maxFloatingLoss.toFixed(2)} USD</b><br>` +
-      `最大浮盈: +${t.maxFloatingProfit.toFixed(2)} USD<br>` +
-      `实际盈亏: ${fmtN(t.netProfit)} USD`
+      `<b>最大浮亏: -${t.maxFloatingLoss.toFixed(2)} ${U}</b><br>` +
+      `最大浮盈: +${t.maxFloatingProfit.toFixed(2)} ${U}<br>` +
+      `实际盈亏: ${fmtN(t.netProfit)} ${U}`
     ),
     hoverinfo: 'text',
     name: '交易浮亏',
   }], {...PLY_BASE,
     title: { text: '每笔交易：持仓时间 × 最大浮亏（气泡大小=浮亏金额）', font: { size: 14 } },
     xaxis: { ...PLY_BASE.xaxis, title: '持仓时长（分钟）' },
-    yaxis: { ...PLY_BASE.yaxis, title: '最大浮亏（USD）' },
+    yaxis: { ...PLY_BASE.yaxis, title: '最大浮亏（' + U + '）' },
     shapes: [{ type: 'line', x0: 0, x1: Math.max(...flt.map(t => t.holdingMin), 1), y0: 0, y1: 0,
       line: { color: '#8b90a8', width: 1, dash: 'dash' } }],
   }, { responsive: true, displayModeBar: false });
 }
 
 function renderFLTable(ft) {
+  var U = getCurrency();
   const flt = ft.filter(t => t.maxFloatingLoss !== null && t.maxFloatingLoss > 0);
   if (!flt.length) {
     document.getElementById('fl-table-wrap').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">无浮亏数据</div>';
     return;
   }
 
-  // Top 20 worst floating losses
   const top20 = [...flt].sort((a, b) => b.maxFloatingLoss - a.maxFloatingLoss).slice(0, 20);
   const header = `<thead><tr>
     <th>排名</th><th>订单号</th><th>类型</th><th>品种</th><th>手数</th>
@@ -1386,8 +1403,8 @@ function renderFLTable(ft) {
       <td>${t.item}</td><td>${t.size}</td>
       <td>${fmtDT(t.openTimeBJ)}</td><td>${fmtDT(t.closeTimeBJ)}</td>
       <td>${holdFmt(t.holdingMin)}</td>
-      <td class="neg" style="font-weight:700">-${t.maxFloatingLoss.toFixed(2)} USD</td>
-      <td class="pos">+${t.maxFloatingProfit.toFixed(2)} USD</td>
+      <td class="neg" style="font-weight:700">-${t.maxFloatingLoss.toFixed(2)} ${U}</td>
+      <td class="pos">+${t.maxFloatingProfit.toFixed(2)} ${U}</td>
       <td class="${nCls(t.netProfit)}" style="font-weight:600">${fmtN(t.netProfit)}</td>
       <td class="${ratioCls}">${ratio}x</td>
     </tr>`;
@@ -1408,15 +1425,16 @@ function renderCompare() {
 }
 
 function renderCTable() {
+  var U = getCurrency();
   const rows = [
     ['交易日期',  s=>s.date],
     ['总笔数',    s=>`${s.n} 笔`],
     ['盈利笔数',  s=>`<span class="pos">${s.wins}</span>`],
     ['亏损笔数',  s=>`<span class="neg">${s.losses}</span>`],
     ['胜率',      s=>`<span class="${s.wr>=50?'pos':'neg'}">${s.wr.toFixed(1)}%</span>`],
-    ['总净利润',  s=>`<span class="${nCls(s.tp)}">${fmtN(s.tp)} USD</span>`],
-    ['数学期望',  s=>`<span class="${nCls(s.exp)}">${fmtN(s.exp,2)} USD</span>`],
-    ['最大回撤',  s=>`<span class="neg">-${s.maxDD.toFixed(2)} USD</span>`],
+    ['总净利润',  s=>`<span class="${nCls(s.tp)}">${fmtN(s.tp)} ${U}</span>`],
+    ['数学期望',  s=>`<span class="${nCls(s.exp)}">${fmtN(s.exp,2)} ${U}</span>`],
+    ['最大回撤',  s=>`<span class="neg">-${s.maxDD.toFixed(2)} ${U}</span>`],
     ['回撤率',    s=>`<span class="${s.maxDDPct>20?'neg':s.maxDDPct>10?'hi':'pos'}">${s.maxDDPct.toFixed(1)}%</span>`],
     ['盈亏比',    s=>`<span class="${s.pf>=1.5?'pos':s.pf>=1?'hi':'neg'}">${isFinite(s.pf)?s.pf.toFixed(2):'∞'}</span>`],
     ['最大连胜',  s=>`<span class="pos">${s.mCW} 笔</span>`],
@@ -1441,6 +1459,7 @@ function renderCTable() {
 
 function plotC1Compare() {
   const initCap = getInitCapital();
+  var U = getCurrency();
   const traces = S.files.map((f,idx) => {
     const t = S.filteredTrades.filter(x=>x.sourceIndex===idx);
     if (!t.length) return null;
@@ -1448,7 +1467,7 @@ function plotC1Compare() {
     return {
       x:tc.map(t=>t.closeTimeBJ), y:tc.map(t=>initCap + t.cumulativeProfit),
       type:'scatter',mode:'lines+markers',line:{color,width:2.5},marker:{size:5,color},
-      text:tc.map(t=>`<b>${f.fileName}</b><br>#${t.ticket}<br>平仓: ${fmtDT(t.closeTimeBJ)}<br>累计: ${fmtN(t.cumulativeProfit)} USD`),
+      text:tc.map(t=>`<b>${f.fileName}</b><br>#${t.ticket}<br>平仓: ${fmtDT(t.closeTimeBJ)}<br>累计: ${fmtN(t.cumulativeProfit)} ${U}`),
       hoverinfo:'text',name:f.fileName,
     };
   }).filter(Boolean);
@@ -1458,11 +1477,12 @@ function plotC1Compare() {
     title:{text:'各文件累计收益曲线对比',font:{size:14}},
     shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
-    yaxis:{...PLY_BASE.yaxis,title:'累计净利润（USD）'},
+    yaxis:{...PLY_BASE.yaxis,title:'累计净利润（' + U + '）'},
   },{responsive:true,displayModeBar:false});
 }
 
 function plotC2Compare(ft) {
+  var U = getCurrency();
   const traces = S.files.map((f,idx) => {
     const t=ft.filter(x=>x.sourceIndex===idx); if (!t.length) return null;
     const color=FILE_COLORS[idx%8];
@@ -1470,7 +1490,7 @@ function plotC2Compare(ft) {
       x:t.map(x=>x.openTimeBJ),y:t.map(x=>x.netProfit),
       type:'scatter',mode:'markers',
       marker:{size:9,color,opacity:.8,line:{width:1,color:'#0f1117'}},
-      text:t.map(x=>`<b>${f.fileName} · #${x.ticket}</b><br>${x.type.toUpperCase()} ${x.item} ${x.size}手<br>开: ${fmtDT(x.openTimeBJ)}<br>盈亏: ${fmtN(x.netProfit)} USD`),
+      text:t.map(x=>`<b>${f.fileName} · #${x.ticket}</b><br>${x.type.toUpperCase()} ${x.item} ${x.size}手<br>开: ${fmtDT(x.openTimeBJ)}<br>盈亏: ${fmtN(x.netProfit)} ${U}`),
       hoverinfo:'text',name:f.fileName,
     };
   }).filter(Boolean);
@@ -1478,7 +1498,7 @@ function plotC2Compare(ft) {
   Plotly.newPlot('c2c',traces,{...PLY_BASE,
     title:{text:'进场时机分布（按文件着色）',font:{size:14}},
     xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
-    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（USD）'},
+    yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
   },{responsive:true,displayModeBar:false});
 }
 
@@ -1486,6 +1506,7 @@ function plotC2Compare(ft) {
 // Trade Table
 // ══════════════════════════════════════════════════════════════
 function renderTable() {
+  var U = getCurrency();
   const { sort, page, pageSize, filteredTrades:ft } = S;
   const sorted = [...ft].sort((a,b) => {
     let av=a[sort.key], bv=b[sort.key];
@@ -1506,7 +1527,7 @@ function renderTable() {
 
   document.getElementById('tbody').innerHTML = slice.map(t => {
     const hold=holdFmt(t.holdingMin), dc=FILE_COLORS[t.sourceIndex%8];
-    const fl = t.maxFloatingLoss != null ? `-${t.maxFloatingLoss.toFixed(2)} USD` : '-';
+    const fl = t.maxFloatingLoss != null ? `-${t.maxFloatingLoss.toFixed(2)} ${U}` : '-';
     const flCls = t.maxFloatingLoss != null && t.maxFloatingLoss > 0 ? 'neg' : 'neu';
     return `<tr>
       <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dc};margin-right:5px;vertical-align:middle"></span>${t.sourceFile}</td>
