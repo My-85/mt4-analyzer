@@ -878,13 +878,23 @@ function computeEquityCurve(trades, bars) {
   };
 }
 
+function isCentTrade(trade) {
+  // Detect cent accounts: symbol ends with 'c' (XAUUSDc) or contains USC
+  return /c$/i.test(trade.item) || /USC/i.test(trade.item);
+}
+
 function getPointValue(trade) {
   const priceDiff = Math.abs(trade.closePrice - trade.openPrice);
-  const defaultPV = trade.size * 100; // XAUUSD: 1 lot = $100/point
+  // Base lot value: XAUUSD 1 std lot = $100/point, Forex 1 std lot = $10/pip
+  var isGold = /^XAU/i.test(trade.item) || /^GOLD/i.test(trade.item);
+  var basePV = isGold ? 100 : 10;
+  var defaultPV = trade.size * basePV;
+  // Cent accounts have 1/100 the value per lot
+  if (isCentTrade(trade)) defaultPV *= 0.01;
+  // Derive actual point value from trade profit (most reliable)
   if (priceDiff > 0.0001) {
-    const iv = Math.abs(trade.profit) / priceDiff;
-    // Sanity cap: point value should not exceed 5x the default
-    if (iv > 0 && isFinite(iv) && iv <= defaultPV * 5) return iv;
+    var iv = Math.abs(trade.profit) / priceDiff;
+    if (iv > 0 && isFinite(iv) && iv <= defaultPV * 10) return iv;
   }
   return defaultPV;
 }
@@ -975,6 +985,34 @@ async function processFiles(files) {
 
       // Compute floating P&L for each trade
       S.allTrades = S.allTrades.map(t => computeTradeFloating(t, S.bars));
+
+      // Debug: log first 10 trades' floating P&L
+      if (S.hasKline) {
+        console.log('=== Floating P&L Debug (first 10 trades) ===');
+        S.allTrades.slice(0, 10).forEach(function(t, i) {
+          console.log('Trade #' + i + ': ' + t.type + ' ' + t.item +
+            ' | size=' + t.size + ' | open=' + t.openPrice + ' close=' + t.closePrice +
+            ' | profit=' + t.profit + ' netProfit=' + t.netProfit +
+            ' | maxFL=' + (t.maxFloatingLoss != null ? t.maxFloatingLoss.toFixed(4) : 'null') +
+            ' | maxFP=' + (t.maxFloatingProfit != null ? t.maxFloatingProfit.toFixed(4) : 'null') +
+            ' | centSymbol=' + isCentTrade(t) +
+            ' | PV=' + getPointValue(t).toFixed(6));
+        });
+        // Log trades with largest floating losses
+        var sortedByFL = S.allTrades.filter(function(t) { return t.maxFloatingLoss != null && t.maxFloatingLoss > 0; })
+          .sort(function(a, b) { return b.maxFloatingLoss - a.maxFloatingLoss; });
+        if (sortedByFL.length > 0) {
+          console.log('=== Top 5 worst floating losses ===');
+          sortedByFL.slice(0, 5).forEach(function(t, i) {
+            console.log('  #' + (i+1) + ': Ticket ' + t.ticket + ' | ' + t.type + ' ' + t.item +
+              ' | maxFL=' + t.maxFloatingLoss.toFixed(2) +
+              ' | PV=' + getPointValue(t).toFixed(6) +
+              ' | holding=' + t.holdingMin + 'min' +
+              ' | open=' + (t.openTimeRaw||t.openTimeBJ).toISOString() +
+              ' | close=' + (t.closeTimeRaw||t.closeTimeBJ).toISOString());
+          });
+        }
+      }
 
       // Update trade data in S.files too
       for (let i = 0; i < S.files.length; i++) {
