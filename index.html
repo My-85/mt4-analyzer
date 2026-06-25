@@ -735,18 +735,21 @@ function computeTradeFloating(trade, bars) {
   const openT = (trade.openTimeRaw || trade.openTimeBJ).getTime();
   const closeT = (trade.closeTimeRaw || trade.closeTimeBJ).getTime();
 
-  // Binary search to find start/end indices in bars
-  // Expand range by 5 min in each direction to handle K-line gaps
-  var SEARCH_PAD = 5 * 60000;
+  // Binary search for exact bar range (no padding — bars outside the trade's
+  // holding period should not contribute to floating P&L)
   let lo = 0, hi = bars.length - 1;
-  while (lo < hi) { const mid = (lo + hi) >> 1; if (bars[mid].time.getTime() < openT - SEARCH_PAD) lo = mid + 1; else hi = mid; }
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (bars[mid].time.getTime() < openT) lo = mid + 1; else hi = mid; }
   var startIdx = lo;
 
   lo = 0; hi = bars.length - 1;
-  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (bars[mid].time.getTime() > closeT + SEARCH_PAD) hi = mid - 1; else lo = mid; }
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (bars[mid].time.getTime() > closeT) hi = mid - 1; else lo = mid; }
   var endIdx = lo;
 
-  if (startIdx > endIdx || startIdx >= bars.length || endIdx < 0) return trade;
+  // If no bars found in range (e.g. market closed during holding), use the single nearest bar
+  if (startIdx > endIdx || startIdx >= bars.length || endIdx < 0) {
+    if (startIdx >= bars.length) startIdx = bars.length - 1;
+    endIdx = startIdx;
+  }
 
   const isBuy = trade.type === 'buy';
   const openPrice = trade.openPrice;
