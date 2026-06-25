@@ -1241,11 +1241,27 @@ function plotEquityCurve(ftc) {
     line:{color:lc,width:2.5},marker:{size:5,color:lc},
     fill:'tozeroy',fillcolor:fp>=0?'rgba(38,166,154,.1)':'rgba(239,83,80,.1)',
     text:ftc.map(t => `<b>#${t.ticket}</b><br>平仓: ${fmtDT(t.closeTimeBJ)}<br>单笔: ${fmtN(t.netProfit)} ${U}<br>累计: ${fmtN(t.cumulativeProfit)} ${U}`),
-    hoverinfo:'text',name:'累计净利润',
+    hoverinfo:'text',name:'累计净利润（已平仓）',
   }];
 
+  // Add K-line equity curve overlay when available
+  if (S.hasKline && S.bars) {
+    const eq = computeEquityCurve(ftc, S.bars);
+    if (eq && eq.samples && eq.samples.length) {
+      traces.push({
+        x: eq.samples.map(s => s.time),
+        y: eq.samples.map(s => s.equity),
+        type: 'scatter', mode: 'lines',
+        line: { color: '#ff9800', width: 2, dash: 'solid' },
+        name: '资金曲线（含浮亏）',
+        text: eq.samples.map(s => `时间: ${fmtDT(s.time)}<br>资金: ${fmtN(s.equity)} ${U}<br>已实现: ${fmtN(s.balance)} ${U}<br>浮亏: ${fmtN(s.unrealizedPL)} ${U}<br>持仓数: ${s.openCount}`),
+        hoverinfo: 'text',
+      });
+    }
+  }
+
   Plotly.newPlot('c1', traces, {...PLY_BASE,
-    title:{text:'策略资金净值 / 累计收益曲线（已平仓）',font:{size:14}},
+    title:{text:'资金净值 / 累计收益曲线',font:{size:14}},
     shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'金额（' + U + '）'},
