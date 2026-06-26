@@ -1271,7 +1271,8 @@ function plotEquityCurve(ftc) {
     shapes:[{type:'line',x0:x[0],x1:x[x.length-1],y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'金额（' + U + '）'},
-  },{responsive:true,displayModeBar:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 function plotEntryTiming(ft) {
@@ -1292,7 +1293,8 @@ function plotEntryTiming(ft) {
     shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:0,y1:0,line:{color:'#8b90a8',width:1}}],
     xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
-  },{responsive:true,displayModeBar:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 function plotGantt(trades, divId, byFile) {
@@ -1315,7 +1317,8 @@ function plotGantt(trades, divId, byFile) {
     yaxis:{...PLY_BASE.yaxis,automargin:true,autorange:'reversed',tickfont:{size:10}},
     height:Math.min(Math.max(320,sorted.length*26+130),1600),
     margin:{l:140,r:20,t:70,b:20},
-  },{responsive:true,displayModeBar:true,scrollZoom:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,scrollZoom:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1412,7 +1415,8 @@ function plotFloatingCurve(ft) {
       tickfont:{color:'#ef5350'},titlefont:{color:'#ef5350'}},
     shapes:[{type:'line',x0:eq.samples[0].time,x1:eq.samples[eq.samples.length-1].time,y0:0,y1:0,
       line:{color:'#8b90a8',width:1,dash:'dash'},yref:'y2'}],
-  },{responsive:true,displayModeBar:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 function plotTradeFloating(ft) {
@@ -1553,7 +1557,8 @@ function plotC1Compare() {
     shapes:[{type:'line',x0:new Date(Math.min(...allX)),x1:new Date(Math.max(...allX)),y0:initCap,y1:initCap,line:{color:'#8b90a8',width:1,dash:'dash'}}],
     xaxis:{...PLY_BASE.xaxis,title:'平仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'累计净利润（' + U + '）'},
-  },{responsive:true,displayModeBar:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 function plotC2Compare(ft) {
@@ -1574,7 +1579,8 @@ function plotC2Compare(ft) {
     title:{text:'进场时机分布（按文件着色）',font:{size:14}},
     xaxis:{...PLY_BASE.xaxis,title:'开仓时间（北京）'},
     yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
-  },{responsive:true,displayModeBar:false});
+  },{responsive:true,displayModeBar:true,displaylogo:false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
 }
 
 // ══════════════════════════════════════════════════════════════
