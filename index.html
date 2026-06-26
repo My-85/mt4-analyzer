@@ -1339,7 +1339,11 @@ function plotBalanceEquityCurve(ft) {
       type: 'scatter', mode: 'lines',
       line: { color: '#26a69a', width: 2 },
       name: '余额 (已实现)',
-      hoverinfo: 'skip',
+      text: eq.samples.map(function(s) {
+        return '时间: ' + fmtDT(s.time) + '<br>余额: ' + fmtN(s.balance) + ' ' + U +
+               '<br>持仓数: ' + s.openCount;
+      }),
+      hoverinfo: 'text',
     },
     {
       x: eq.samples.map(function(s) { return s.time; }),
