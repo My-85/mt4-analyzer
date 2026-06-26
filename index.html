@@ -341,7 +341,6 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
 function dlChart(divId, filename) {
   var el = document.getElementById(divId);
   if (!el) return;
-  // Remove existing button if any
   var existing = el.parentNode.querySelector('.dl-btn');
   if (existing) existing.remove();
   var btn = document.createElement('button');
@@ -350,7 +349,14 @@ function dlChart(divId, filename) {
   btn.title = '下载为 PNG';
   btn.onclick = function(e) {
     e.stopPropagation();
-    Plotly.downloadImage(el, { format: 'png', width: 1400, height: 500, filename: filename });
+    Plotly.toImage(el, { format: 'png', width: 1400, height: 500 }).then(function(dataUrl) {
+      var link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename + '.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   };
   el.parentNode.appendChild(btn);
 }
