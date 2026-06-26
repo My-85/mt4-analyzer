@@ -130,6 +130,12 @@ table.tt td{padding:7px 11px;text-align:right;white-space:nowrap}
 table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
 .tybuy{color:var(--green);font-weight:600} .tysell{color:var(--red);font-weight:600}
 
+/* download button */
+.dl-btn{position:absolute;top:8px;right:8px;z-index:10;background:var(--surface2);border:1px solid var(--border);
+  color:var(--muted);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:11px;transition:all .15s}
+.dl-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cw{position:relative}
+
 /* pagination */
 .pag{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;font-size:13px;flex-wrap:wrap}
 .pbtn{padding:4px 11px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;cursor:pointer;font-size:13px;transition:all .15s}
@@ -328,6 +334,26 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
       'color:#f5c842;font-weight:bold;', 'color:#8b90a8;');
   }
 })();
+
+// ══════════════════════════════════════════════════════════════
+// Download helper — injects a download button after each chart
+// ══════════════════════════════════════════════════════════════
+function dlChart(divId, filename) {
+  var el = document.getElementById(divId);
+  if (!el) return;
+  // Remove existing button if any
+  var existing = el.parentNode.querySelector('.dl-btn');
+  if (existing) existing.remove();
+  var btn = document.createElement('button');
+  btn.className = 'dl-btn';
+  btn.textContent = '⬇ 下载';
+  btn.title = '下载为 PNG';
+  btn.onclick = function(e) {
+    e.stopPropagation();
+    Plotly.downloadImage(el, { format: 'png', width: 1400, height: 500, filename: filename });
+  };
+  el.parentNode.appendChild(btn);
+}
 
 // ══════════════════════════════════════════════════════════════
 // Constants & State
@@ -1273,6 +1299,7 @@ function plotEquityCurve(ftc) {
     yaxis:{...PLY_BASE.yaxis,title:'金额（' + U + '）'},
   },{responsive:true,displayModeBar:true,displaylogo:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart('c1', '资金净值_累计收益曲线');
 }
 
 function plotEntryTiming(ft) {
@@ -1295,6 +1322,7 @@ function plotEntryTiming(ft) {
     yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
   },{responsive:true,displayModeBar:true,displaylogo:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart('c2', '进场时机监控');
 }
 
 function plotGantt(trades, divId, byFile) {
@@ -1319,6 +1347,7 @@ function plotGantt(trades, divId, byFile) {
     margin:{l:140,r:20,t:70,b:20},
   },{responsive:true,displayModeBar:true,displaylogo:false,scrollZoom:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart(divId, '持仓甘特图');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1371,7 +1400,9 @@ function plotBalanceEquityCurve(ft) {
       y0: initCap, y1: initCap,
       line: { color: '#8b90a8', width: 1, dash: 'dash' },
     }],
-  }, { responsive: true, displayModeBar: false });
+  }, { responsive: true, displayModeBar: true, displaylogo: false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d'] });
+  dlChart('c-balance', '资金净值_余额曲线');
 }
 
 function plotFloatingCurve(ft) {
@@ -1421,6 +1452,7 @@ function plotFloatingCurve(ft) {
       line:{color:'#8b90a8',width:1,dash:'dash'},yref:'y2'}],
   },{responsive:true,displayModeBar:true,displaylogo:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart('c-floating', '账户浮亏浮盈曲线');
 }
 
 function plotTradeFloating(ft) {
@@ -1458,7 +1490,9 @@ function plotTradeFloating(ft) {
     yaxis: { ...PLY_BASE.yaxis, title: '最大浮亏（' + U + '）' },
     shapes: [{ type: 'line', x0: 0, x1: Math.max(...flt.map(t => t.holdingMin), 1), y0: 0, y1: 0,
       line: { color: '#8b90a8', width: 1, dash: 'dash' } }],
-  }, { responsive: true, displayModeBar: false });
+  }, { responsive: true, displayModeBar: true, displaylogo: false,
+    modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d'] });
+  dlChart('c-trade-fl', '持仓时间_最大浮亏');
 }
 
 function renderFLTable(ft) {
@@ -1563,6 +1597,7 @@ function plotC1Compare() {
     yaxis:{...PLY_BASE.yaxis,title:'累计净利润（' + U + '）'},
   },{responsive:true,displayModeBar:true,displaylogo:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart('c1c', '各文件累计收益对比');
 }
 
 function plotC2Compare(ft) {
@@ -1585,6 +1620,7 @@ function plotC2Compare(ft) {
     yaxis:{...PLY_BASE.yaxis,title:'单笔盈亏（' + U + '）'},
   },{responsive:true,displayModeBar:true,displaylogo:false,
     modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']});
+  dlChart('c2c', '进场时机分布');
 }
 
 // ══════════════════════════════════════════════════════════════
