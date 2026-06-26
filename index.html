@@ -242,6 +242,8 @@ table.tt td:first-child{text-align:left;color:var(--muted);font-size:11px}
     <div class="cw"><div id="c1" style="height:400px"></div></div>
 
     <div id="kline-charts" style="display:none">
+      <div class="st">💵 资金净值 & 余额曲线 <span class="badge badge-kline">K线模拟</span></div>
+      <div class="cw"><div id="c-balance" style="height:380px"></div></div>
       <div class="st">📉 账户浮亏/浮盈曲线 <span class="badge badge-kline">K线模拟</span></div>
       <div class="cw"><div id="c-floating" style="height:400px"></div></div>
       <div class="st">📊 每笔交易：持仓时间 × 最大浮亏/浮盈 <span class="badge badge-kline">K线回测</span></div>
@@ -1188,6 +1190,7 @@ function renderMerged() {
 
   renderStats(st);
   plotEquityCurve(ftc);
+  if (S.hasKline) plotBalanceEquityCurve(ft);
   if (S.hasKline) plotFloatingCurve(ft);
   if (S.hasKline) plotTradeFloating(ft);
   if (S.hasKline) renderFLTable(ft);
@@ -1318,6 +1321,52 @@ function plotGantt(trades, divId, byFile) {
 // ══════════════════════════════════════════════════════════════
 // New K-line Enhanced Charts
 // ══════════════════════════════════════════════════════════════
+// Clean balance + equity chart (no floating P&L fill, no drawdown)
+function plotBalanceEquityCurve(ft) {
+  if (!S.bars) return;
+  var U = getCurrency();
+  var initCap = getInitCapital();
+  var eq = computeEquityCurve(ft, S.bars);
+  if (!eq || !eq.samples || !eq.samples.length) return;
+
+  var traces = [
+    {
+      x: eq.samples.map(function(s) { return s.time; }),
+      y: eq.samples.map(function(s) { return s.balance; }),
+      type: 'scatter', mode: 'lines',
+      line: { color: '#26a69a', width: 2 },
+      name: '余额 (已实现)',
+      hoverinfo: 'skip',
+    },
+    {
+      x: eq.samples.map(function(s) { return s.time; }),
+      y: eq.samples.map(function(s) { return s.equity; }),
+      type: 'scatter', mode: 'lines',
+      line: { color: '#4f8ef7', width: 2.5 },
+      name: '资金净值 (含未实现)',
+      text: eq.samples.map(function(s) {
+        return '时间: ' + fmtDT(s.time) + '<br>资金净值: ' + fmtN(s.equity) + ' ' + U +
+               '<br>余额: ' + fmtN(s.balance) + ' ' + U +
+               '<br>持仓浮亏: ' + fmtN(s.unrealizedPL) + ' ' + U +
+               '<br>持仓数: ' + s.openCount;
+      }),
+      hoverinfo: 'text',
+    },
+  ];
+
+  Plotly.newPlot('c-balance', traces, { ...PLY_BASE,
+    title: { text: '资金净值 & 余额曲线', font: { size: 14 } },
+    xaxis: { ...PLY_BASE.xaxis, title: '时间（北京）' },
+    yaxis: { ...PLY_BASE.yaxis, title: '金额（' + U + '）' },
+    shapes: [{
+      type: 'line',
+      x0: eq.samples[0].time, x1: eq.samples[eq.samples.length - 1].time,
+      y0: initCap, y1: initCap,
+      line: { color: '#8b90a8', width: 1, dash: 'dash' },
+    }],
+  }, { responsive: true, displayModeBar: false });
+}
+
 function plotFloatingCurve(ft) {
   if (!S.bars) return;
   var U = getCurrency();
